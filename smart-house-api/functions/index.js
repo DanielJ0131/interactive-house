@@ -21,6 +21,12 @@ if (!JWT_SECRET) {
   throw new Error("JWT_SECRET not defined in environment variables");
 }
 
+const REGISTRATION_API_KEY = process.env.REGISTRATION_API_KEY;
+
+if (!REGISTRATION_API_KEY) {
+  throw new Error("REGISTRATION_API_KEY not defined in environment variables");
+}
+
 const DEFAULT_DEVICES = {
   light: "off",
   door: "closed",
@@ -54,6 +60,16 @@ const authenticate = (req, res, next) => {
 // -------- REGISTER USER --------
 app.post('/users/register', async (req, res) => {
   try {
+    const apiKey = req.headers['x-api-key'];
+
+    if (!apiKey) {
+      return res.status(403).json({ error: "Missing API key in header" });
+    }
+
+    if (apiKey !== REGISTRATION_API_KEY) {
+      return res.status(403).json({ error: "Invalid API key" });
+    }
+
     const { username, password } = req.body;
 
     if (!username || !password) {
