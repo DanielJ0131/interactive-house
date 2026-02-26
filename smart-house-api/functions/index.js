@@ -28,12 +28,41 @@ if (!REGISTRATION_API_KEY) {
 }
 
 const DEFAULT_DEVICES = {
-  light: "off",
-  door: "closed",
-  window: "closed",
-  fan: "off",
-  speaker: "off",
-  ledTextDisplay: "Welcome Home"
+  white_light: {
+    state: "off",
+    value: null,
+    pin: "13"
+  },
+  orange_light: {
+    state: "off",
+    value: "0",
+    pin: "5"
+  },
+  door: {
+    state: "closed",
+    value: null,
+    pin: "9"
+  },
+  window: {
+    state: "closed",
+    value: null,
+    pin: "10"
+  },
+  fan_INA: {
+    state: "off",
+    value: null,
+    pin: "7"
+  },
+  fan_INB: {
+    state: "off",
+    value: null,
+    pin: "6"
+  },
+  buzzer:{
+    state: "off",
+    value: "0",
+    pin: "3"
+  },
 };
 
 const authenticate = (req, res, next) => {
