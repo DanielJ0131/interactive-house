@@ -416,3 +416,12 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# smarthouse-gateway secrets. we can probably delete the env specific ones later. just making sure we aren't pushing
+# admin file and admin secrets lol 
+smarthouse-gateway/config/serviceAccountKey.json
+smarthouse-gateway/config/.env 
+smarthouse-gateway/.venv/
+smarthouse-gateway/logs/
+# allow example env 
+!smarthouse-gateway/config/.env.example 

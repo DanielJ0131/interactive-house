@@ -57,7 +57,7 @@ This project aligns with the UN Sustainable Development Goals:
  
 ## Subgroup 4 - Free Choice / Innovation
 
-  * Members: 3
+  * Members: 4
 
   * Role: Motivated Choice: Focuses on advanced simulated devices and accessibility features to increase a person's independence.
 

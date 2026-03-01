@@ -1,0 +1,6 @@
+.venv/
+config/serviceAccountKey.json
+config/.env
+logs/
+__pycache__/
+*.pyc
