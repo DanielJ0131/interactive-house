@@ -1,20 +1,40 @@
-import React from 'react';
-import { View, Text, Pressable, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Pressable, Platform, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 
+// 1. Import Firebase auth
+import { auth } from '../utils/firebaseConfig'; 
+import { signInAnonymously } from 'firebase/auth';
+
 export default function WelcomeScreen() {
   const router = useRouter();
+  
+  // 2. Add a loading state for the guest login
+  const [isLoadingGuest, setIsLoadingGuest] = useState(false);
 
   const handleNavigation = (path: string, e?: any) => {
     if (Platform.OS === 'web' && e) {
       // @ts-ignore
       e.currentTarget.blur();
     }
-    // Explicitly pushing to the full path
     router.push(path as any);
+  };
+
+  // 3. Add the Guest Login handler
+  const handleGuestLogin = async () => {
+    setIsLoadingGuest(true);
+    try {
+      await signInAnonymously(auth);
+      router.push('/(tabs)/home');
+    } catch (error: any) {
+      console.error('Guest login error:', error.code, error.message);
+      Alert.alert('Error', 'Could not sign in as a guest. Please check your connection.');
+    } finally {
+      setIsLoadingGuest(false);
+    }
   };
 
   return (
@@ -38,19 +58,27 @@ export default function WelcomeScreen() {
           {/* Sign In Button */}
           <Pressable 
             onPress={(e) => handleNavigation('/(auth)/login', e)}
+            disabled={isLoadingGuest}
             className="bg-sky-500 p-5 rounded-2xl active:bg-sky-600 shadow-lg shadow-sky-500/20"
           >
             <Text className="text-white text-center font-bold text-lg">Get Started</Text>
           </Pressable>
 
-          {/* Skip Button - points to /home now */}
+          {/* 4. Update Skip Button to trigger the Firebase Auth */}
           <Pressable 
-            onPress={(e) => handleNavigation('/(tabs)/home', e)}
+            onPress={handleGuestLogin}
+            disabled={isLoadingGuest}
             className="mt-6 py-2 active:opacity-60"
           >
             <View className="flex-row justify-center items-center">
-              <Text className="text-slate-500 font-semibold text-base">Explore as Guest </Text>
-              <MaterialCommunityIcons name="arrow-right" size={18} color="#64748b" />
+              {isLoadingGuest ? (
+                <ActivityIndicator color="#64748b" />
+              ) : (
+                <>
+                  <Text className="text-slate-500 font-semibold text-base">Explore as Guest </Text>
+                  <MaterialCommunityIcons name="arrow-right" size={18} color="#64748b" />
+                </>
+              )}
             </View>
           </Pressable>
         </View>

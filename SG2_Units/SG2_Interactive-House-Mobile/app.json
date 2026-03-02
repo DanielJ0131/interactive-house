@@ -21,15 +21,17 @@
       }
     },
     "android": {
-    "permissions": ["RECORD_AUDIO"],
-    "adaptiveIcon": {
-    "foregroundImage": "./assets/images/adaptive-icon.png",
-    "backgroundColor": "#ffffff"
+      "permissions": [
+        "RECORD_AUDIO"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.dani.interactivehouse"
     },
-    "edgeToEdgeEnabled": true,
-    "predictiveBackGestureEnabled": false,
-    "package": "com.dani.interactivehouse"
-  },
     "web": {
       "bundler": "metro",
       "output": "static",
@@ -44,9 +46,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "36b3f6e6-c83c-443d-8c90-7f119fb8cf93"
+        "projectId": "31d69921-2cf7-4e76-99df-e1aba5b6e739"
       }
     },
-    "owner": "daniell_110"
+    "owner": "danielj0131"
   }
 }

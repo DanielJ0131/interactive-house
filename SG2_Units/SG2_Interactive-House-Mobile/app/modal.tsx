@@ -1,11 +1,12 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState, useEffect } from 'react';
-import { Pressable, ScrollView, Text, View, ActivityIndicator, Platform } from 'react-native';
+import { Pressable, ScrollView, Text, View, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
+// 1. Import Firebase Auth and Firestore sync
 import { onSnapshotsInSync } from 'firebase/firestore'; 
-import { db } from '../utils/firebaseConfig'; 
+import { onAuthStateChanged } from 'firebase/auth';
+import { db, auth } from '../utils/firebaseConfig'; 
 
 export default function ModalScreen() {
   const [isConnected, setIsConnected] = useState(false);
@@ -14,27 +15,21 @@ export default function ModalScreen() {
 
   useEffect(() => {
     // 1. Monitor Firestore Cloud Sync
+    // This triggers when local data is successfully synchronized with the cloud
     const unsubscribeSync = onSnapshotsInSync(db, () => {
       setIsConnected(true);
-      // We only stop the spinner once we've also checked the auth token
     });
 
-    // 2. Check for active User Session
-    const checkSession = async () => {
-      try {
-        const token = Platform.OS === 'web' 
-          ? localStorage.getItem('userToken') 
-          : await SecureStore.getItemAsync('userToken');
-        
-        setIsLoggedIn(!!token);
-      } catch (err) {
+    // 2. Check for Firebase User Session
+    // This is the "correct" way to check login status in Firebase
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsLoggedIn(true);
+      } else {
         setIsLoggedIn(false);
-      } finally {
-        setIsChecking(false);
       }
-    };
-
-    checkSession();
+      setIsChecking(false); // Stop the spinner once auth state is determined
+    });
 
     // Safety timeout: stop spinner if cloud doesn't respond quickly
     const timer = setTimeout(() => {
@@ -43,6 +38,7 @@ export default function ModalScreen() {
 
     return () => {
       unsubscribeSync();
+      unsubscribeAuth();
       clearTimeout(timer);
     };
   }, []);
@@ -54,6 +50,7 @@ export default function ModalScreen() {
     <View style={{ flex: 1, backgroundColor: '#020617' }}>
       <StatusBar style="light" />
       
+      {/* Back Button */}
       <View className="absolute top-12 left-6 z-10">
         <Pressable 
           onPress={() => router.back()}
@@ -108,12 +105,12 @@ export default function ModalScreen() {
           {/* User Auth Row */}
           <View className="flex-row justify-between items-center">
             <View>
-              <Text className="text-white text-lg font-bold">Session</Text>
-              <Text className="text-slate-500 text-sm">User Authentication</Text>
+              <Text className="text-white text-lg font-bold">Account</Text>
+              <Text className="text-slate-500 text-sm">{isLoggedIn ? auth.currentUser?.email : "User Authentication"}</Text>
             </View>
             <View className={`px-4 py-1.5 rounded-full border ${isLoggedIn ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'}`}>
               <Text className={`font-bold text-xs uppercase tracking-widest ${isLoggedIn ? 'text-green-500' : 'text-red-500'}`}>
-                {isLoggedIn ? 'Valid' : 'Missing'}
+                {isLoggedIn ? 'Authenticated' : 'Missing'}
               </Text>
             </View>
           </View>

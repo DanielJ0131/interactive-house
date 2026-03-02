@@ -6,94 +6,77 @@ import {
   ActivityIndicator, 
   TouchableOpacity, 
   Alert, 
-  Platform,
-  TextInput // Added for text editing
+  Platform 
 } from 'react-native';
-import { doc, onSnapshot } from 'firebase/firestore';
-import * as SecureStore from 'expo-secure-store';
-import { db, API_BASE_URL } from '../../utils/firebaseConfig';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { db, auth } from '../../utils/firebaseConfig';
 
 export default function DatabaseScreen() {
-  const [data, setData] = useState<any>(null);
+  const [deviceData, setDeviceData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentUsername, setCurrentUsername] = useState<string | null>(null);
-  const [newDisplayText, setNewDisplayText] = useState(''); // State for the input field
+  const [user, setUser] = useState<User | null>(null);
 
+  // 1. Monitor Auth State
   useEffect(() => {
-    const initializeSession = async () => {
-      try {
-        const token = Platform.OS === 'web' 
-          ? localStorage.getItem('userToken') 
-          : await SecureStore.getItemAsync('userToken');
-
-        if (!token) {
-          setError("No active session. Please login.");
-          setLoading(false);
-          return;
-        }
-
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const username = payload.username;
-        setCurrentUsername(username);
-
-        const docRef = doc(db, "users", username);
-        const unsubscribe = onSnapshot(docRef, (docSnap) => {
-          if (docSnap.exists()) {
-            const userData = docSnap.data();
-            setData(userData);
-            setNewDisplayText(userData.ledTextDisplay || ''); // Sync input with DB
-          } else {
-            setError(`House for ${username} not found.`);
-          }
-          setLoading(false);
-        }, (err) => {
-          setError(err.message);
-          setLoading(false);
-        });
-
-        return unsubscribe;
-      } catch (err: any) {
-        setError("Failed to authenticate session.");
+    const unsubscribeAuth = onAuthStateChanged(auth, (authenticatedUser) => {
+      setUser(authenticatedUser);
+      if (!authenticatedUser) {
         setLoading(false);
+        setError("Please login to view devices.");
       }
-    };
-
-    const unsubPromise = initializeSession();
-    return () => {
-      unsubPromise.then(unsub => unsub && unsub());
-    };
+    });
+    return () => unsubscribeAuth();
   }, []);
 
-  const updateDevice = async (deviceName: string, value: string) => {
-    try {
-      const token = Platform.OS === 'web' 
-        ? localStorage.getItem('userToken') 
-        : await SecureStore.getItemAsync('userToken');
+  // 2. Listen to the "devices" collection
+  useEffect(() => {
+    if (!user || !user.email) return;
 
-      const response = await fetch(`${API_BASE_URL}/users/device`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ deviceName, value })
-      });
+    const docRef = doc(db, "devices", user.email);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to update device");
+    const unsubscribeData = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setDeviceData(docSnap.data());
+        setError(null);
+      } else {
+        setError(`No device configuration found for ${user.email}`);
       }
-    } catch (err: any) {
-      Alert.alert("Update Error", err.message);
-    }
-  };
+      setLoading(false);
+    }, (err) => {
+      console.error(err);
+      setError("Failed to fetch device data.");
+      setLoading(false);
+    });
 
-  const toggleDevice = async (deviceName: string, currentValue: string) => {
-    const newValue = (currentValue === 'on' || currentValue === 'open') 
-      ? (deviceName === 'door' || deviceName === 'window' ? 'closed' : 'off') 
-      : (deviceName === 'door' || deviceName === 'window' ? 'open' : 'on');
-    await updateDevice(deviceName, newValue);
+    return () => unsubscribeData();
+  }, [user]);
+
+  // 3. Update specific state within the Map without overwriting other fields (pin/value)
+  const toggleDevice = async (deviceName: string) => {
+    if (!user?.email || !deviceData?.[deviceName]) return;
+
+    const currentDevice = deviceData[deviceName];
+    const currentState = currentDevice.state;
+
+    // Determine new state based on current state
+    let newState = '';
+    if (currentState === 'on' || currentState === 'open') {
+      newState = (deviceName === 'door' || deviceName === 'window') ? 'closed' : 'off';
+    } else {
+      newState = (deviceName === 'door' || deviceName === 'window') ? 'open' : 'on';
+    }
+
+    try {
+      const docRef = doc(db, "devices", user.email);
+      // We use dot notation "deviceName.state" to only update that specific field
+      await updateDoc(docRef, {
+        [`${deviceName}.state`]: newState
+      });
+    } catch (err: any) {
+      Alert.alert("Toggle Error", err.message);
+    }
   };
 
   if (loading) return (
@@ -106,9 +89,9 @@ export default function DatabaseScreen() {
     <ScrollView style={{ flex: 1, backgroundColor: '#020617', padding: 20 }}>
       <View style={{ marginTop: 40, marginBottom: 30 }}>
         <Text style={{ color: 'white', fontSize: 28, fontWeight: 'bold' }}>
-          {currentUsername ? `${currentUsername}'s House` : 'House Hub'}
+          {user?.displayName ? `${user.displayName}'s Home` : 'My Home'}
         </Text>
-        <Text style={{ color: '#64748b', fontSize: 16 }}>Live Status & Control</Text>
+        <Text style={{ color: '#64748b', fontSize: 16 }}>Hardware Control Panel</Text>
       </View>
 
       {error && (
@@ -117,56 +100,23 @@ export default function DatabaseScreen() {
         </View>
       )}
 
-      {data && (
+      {deviceData && (
         <View style={{ gap: 15 }}>
-          <DeviceCard name="Light" value={data.light} onToggle={() => toggleDevice('light', data.light)} />
-          <DeviceCard name="Fan" value={data.fan} onToggle={() => toggleDevice('fan', data.fan)} />
-          <DeviceCard name="Door" value={data.door} onToggle={() => toggleDevice('door', data.door)} />
-          <DeviceCard name="Speaker" value={data.speaker} onToggle={() => toggleDevice('speaker', data.speaker)} />
-          <DeviceCard name="Window" value={data.window} onToggle={() => toggleDevice('window', data.window)} />
-          
-          {/* UPDATED: LED Display with Edit Text functionality */}
-          <View style={{ backgroundColor: '#1e293b', padding: 20, borderRadius: 16, borderWidth: 1, borderColor: '#334155' }}>
-            <Text style={{ color: '#94a3b8', fontSize: 12, marginBottom: 8, fontWeight: 'bold', letterSpacing: 1 }}>LED DISPLAY</Text>
-            
-            <TextInput
-              style={{ 
-                backgroundColor: '#0f172a', 
-                color: '#0ea5e9', 
-                fontSize: 18, 
-                fontWeight: '600', 
-                padding: 12, 
-                borderRadius: 8,
-                marginBottom: 12,
-                borderWidth: 1,
-                borderColor: '#1e293b'
-              }}
-              value={newDisplayText}
-              onChangeText={setNewDisplayText}
-              placeholder="Enter message..."
-              placeholderTextColor="#475569"
-            />
-            
-            <TouchableOpacity 
-              onPress={() => updateDevice('ledTextDisplay', newDisplayText)}
-              style={{ 
-                backgroundColor: '#0ea5e9', 
-                padding: 12, 
-                borderRadius: 8, 
-                alignItems: 'center' 
-              }}
-            >
-              <Text style={{ color: 'white', fontWeight: 'bold' }}>Update Display</Text>
-            </TouchableOpacity>
-          </View>
+          <DeviceCard name="White Light" data={deviceData.white_light} onToggle={() => toggleDevice('white_light')} />
+          <DeviceCard name="Orange Light" data={deviceData.orange_light} onToggle={() => toggleDevice('orange_light')} />
+          <DeviceCard name="Fan INA" data={deviceData.fan_INA} onToggle={() => toggleDevice('fan_INA')} />
+          <DeviceCard name="Fan INB" data={deviceData.fan_INB} onToggle={() => toggleDevice('fan_INB')} />
+          <DeviceCard name="Door" data={deviceData.door} onToggle={() => toggleDevice('door')} />
+          <DeviceCard name="Window" data={deviceData.window} onToggle={() => toggleDevice('window')} />
+          <DeviceCard name="Buzzer" data={deviceData.buzzer} onToggle={() => toggleDevice('buzzer')} />
         </View>
       )}
 
       <View style={{ marginTop: 40, marginBottom: 40 }}>
-        <Text style={{ color: '#475569', fontSize: 12, marginBottom: 10, fontWeight: 'bold' }}>SYSTEM RAW DATA</Text>
+        <Text style={{ color: '#475569', fontSize: 12, marginBottom: 10, fontWeight: 'bold' }}>HARDWARE DEBUG</Text>
         <View style={{ backgroundColor: '#0f172a', padding: 15, borderRadius: 12, borderWidth: 1, borderColor: '#1e293b' }}>
           <Text style={{ color: '#4ade80', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontSize: 11 }}>
-            {JSON.stringify(data, null, 2)}
+            {JSON.stringify(deviceData, null, 2)}
           </Text>
         </View>
       </View>
@@ -174,8 +124,12 @@ export default function DatabaseScreen() {
   );
 }
 
-function DeviceCard({ name, value, onToggle }: { name: string, value: string, onToggle: () => void }) {
-  const isActive = value === 'on' || value === 'open';
+// Reusable DeviceCard Component for the new Map structure
+function DeviceCard({ name, data, onToggle }: { name: string, data: any, onToggle: () => void }) {
+  if (!data) return null;
+
+  const isActive = data.state === 'on' || data.state === 'open';
+  
   return (
     <TouchableOpacity onPress={onToggle} activeOpacity={0.7} style={{ 
       backgroundColor: isActive ? '#0ea5e915' : '#1e293b', 
@@ -185,10 +139,10 @@ function DeviceCard({ name, value, onToggle }: { name: string, value: string, on
     }}>
       <View>
         <Text style={{ color: 'white', fontSize: 18, fontWeight: '600' }}>{name}</Text>
-        <Text style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>Tap to toggle</Text>
+        <Text style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>Pin: {data.pin}</Text>
       </View>
       <View style={{ backgroundColor: isActive ? '#0ea5e9' : '#475569', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}>
-        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 12, textTransform: 'uppercase' }}>{value}</Text>
+        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 12, textTransform: 'uppercase' }}>{data.state}</Text>
       </View>
     </TouchableOpacity>
   );
