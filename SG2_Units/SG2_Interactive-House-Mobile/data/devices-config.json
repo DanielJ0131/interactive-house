@@ -1,0 +1,19 @@
+{
+  "devices": [
+    { "id": "pir", "name": "PIR Motion Sensor", "icon": "motion-sensor", "pin": "D2" },
+    { "id": "buzzer", "name": "Passive Buzzer", "icon": "volume-high", "pin": "D3" },
+    { "id": "button1", "name": "Button Sensor 1", "icon": "gesture-tap-button", "pin": "D4" },
+    { "id": "led_yellow", "name": "Yellow LED Module", "icon": "led-variant-outline", "pin": "D5" },
+    { "id": "fan", "name": "Fan Module", "icon": "fan", "pin": "D7/D6" },
+    { "id": "button2", "name": "Button Module 2", "icon": "gesture-tap-button", "pin": "D8" },
+    { "id": "servo_door", "name": "Servo 1 (Door)", "icon": "door-open", "pin": "D9" },
+    { "id": "servo_window", "name": "Servo 2 (Window)", "icon": "window-maximize", "pin": "D10" },
+    { "id": "gas", "name": "MQ-2 Gas Sensor", "icon": "gas-cylinder", "pin": "D11/A0" },
+    { "id": "relay", "name": "Relay Module", "icon": "toggle-switch", "pin": "D12" },
+    { "id": "led_white", "name": "White LED", "icon": "led-on", "pin": "D13" },
+    { "id": "lcd", "name": "LCD1602 Display", "icon": "monitor", "pin": "I2C (SDA/SCL)" },
+    { "id": "photocell", "name": "Photocell Sensor", "icon": "brightness-6", "pin": "A1" },
+    { "id": "soil", "name": "Soil Humidity Sensor", "icon": "water-percent", "pin": "A2" },
+    { "id": "steam", "name": "Steam Sensor", "icon": "waves", "pin": "A3" }
+  ]
+}
