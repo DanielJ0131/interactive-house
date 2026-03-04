@@ -20,6 +20,17 @@ import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { INITIAL_DEVICE_DATA } from '../../data/deviceDefaults';
 
+const AUTH_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Request timed out. Please check your connection and try again.')), ms)
+    ),
+  ]);
+}
+
 export default function SignupScreen() {
   const router = useRouter();
   const [name, setName] = useState('');
@@ -44,17 +55,18 @@ export default function SignupScreen() {
 
     try {
       const cleanEmail = email.trim().toLowerCase();
-      const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+      const userCredential = await withTimeout(createUserWithEmailAndPassword(auth, cleanEmail, password), AUTH_TIMEOUT_MS);
       const user = userCredential.user;
       
       await updateProfile(user, { displayName: name });
 
-      await setDoc(doc(db, "devices", user.email!), INITIAL_DEVICE_DATA);
-
-      await setDoc(doc(db, "users", user.email!), {
-        name: name,
-        createdAt: new Date().toISOString()
-      });
+      await Promise.all([
+        setDoc(doc(db, "devices", user.email!), INITIAL_DEVICE_DATA),
+        setDoc(doc(db, "users", user.email!), {
+          name: name,
+          createdAt: new Date().toISOString()
+        }),
+      ]);
 
       Alert.alert('Success', 'Account created successfully!', [
         { text: 'OK', onPress: () => router.replace('/(tabs)/home') }

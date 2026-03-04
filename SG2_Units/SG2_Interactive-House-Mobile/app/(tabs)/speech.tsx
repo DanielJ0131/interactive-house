@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { PermissionsAndroid, Platform } from "react-native";
-import {
-  ExpoSpeechRecognitionModule,
-  useSpeechRecognitionEvent,
-} from "expo-speech-recognition";
+
+/**
+ * We removed the top-level import of ExpoSpeechRecognition to prevent Expo Go from crashing.
+ * We will 'require' it inline only if it exists.
+ */
 
 //main screen for voice control, allowing users to start/stop listening and see live transcripts
 export default function SpeechScreen(){
@@ -15,20 +16,44 @@ export default function SpeechScreen(){
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
 
-//listen for speech recognition results and errors
-  useSpeechRecognitionEvent("result", (event) =>{
-    const text = event.results?.[0]?.transcript ?? "";
-    setTranscript(text);
-    handleIntent(text);
-  });
-  useSpeechRecognitionEvent("error", (event) =>{
-  console.log("Speech error event:", event);
-  });
+  /**
+   * SAFETY GUARD: We attempt to require the module inside the component.
+   * If we are in Expo Go, this will return null instead of crashing the app.
+   */
+  let SpeechRecognition: any = null;
+  try {
+    SpeechRecognition = require("expo-speech-recognition");
+  } catch (e) {
+    SpeechRecognition = null;
+  }
 
-  //listen for when speech recognition ends (either by user or system)
-  useSpeechRecognitionEvent("end", () =>{
-    setIsListening(false);
-  });
+  const isNativeAvailable = !!SpeechRecognition?.ExpoSpeechRecognitionModule;
+
+//listen for speech recognition results and errors
+  // Fixed: We call the hook only if the module was successfully required
+  if (isNativeAvailable) {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    SpeechRecognition.useSpeechRecognitionEvent("result", (event: any) =>{
+      // Guard to ensure we only process if the native module is present
+      if (!isNativeAvailable) return;
+      const text = event.results?.[0]?.transcript ?? "";
+      setTranscript(text);
+      handleIntent(text);
+    });
+
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    SpeechRecognition.useSpeechRecognitionEvent("error", (event: any) =>{
+      // Guard for errors
+      if (!isNativeAvailable) return;
+      console.log("Speech error event:", event);
+    });
+
+    //listen for when speech recognition ends (either by user or system)
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    SpeechRecognition.useSpeechRecognitionEvent("end", () =>{
+      setIsListening(false);
+    });
+  }
 
   //simple intent handler that checks for keywords
   const handleIntent = (text: string) =>{
@@ -63,6 +88,18 @@ export default function SpeechScreen(){
 
 //start listening 
 const startListening = async () =>{
+  /**
+   * SAFETY GUARD: If running in Expo Go, show an alert instead of calling
+   * the missing native method.
+   */
+  if (!isNativeAvailable) {
+    Alert.alert(
+      "Feature Unavailable",
+      "Native speech recognition is not available in Expo Go. Please use a Development Build to test this feature."
+    );
+    return;
+  }
+
   const hasPermission = await requestMicPermission();
 
   if (!hasPermission){
@@ -74,7 +111,7 @@ const startListening = async () =>{
   setIsListening(true);
 
   try{
-    await ExpoSpeechRecognitionModule.start({
+    await SpeechRecognition.ExpoSpeechRecognitionModule.start({
       lang: "en-US",
       interimResults: true,
       continuous: false,
@@ -86,7 +123,10 @@ const startListening = async () =>{
 };
 
   const stopListening = async () =>{
-    await ExpoSpeechRecognitionModule.stop();
+    // Only call stop if the native module is actually loaded
+    if (isNativeAvailable) {
+      await SpeechRecognition.ExpoSpeechRecognitionModule.stop();
+    }
     setIsListening(false);
   };
 
@@ -103,7 +143,8 @@ const startListening = async () =>{
           Voice Control
         </Text>
         <Text className="text-slate-500 text-lg font-medium">
-          Navigate & control with speech
+          {/* Visual feedback regarding environment status */}
+          {isNativeAvailable ? "Navigate & control with speech" : "Voice disabled (Expo Go)"}
         </Text>
       </View>
 
@@ -129,7 +170,7 @@ const startListening = async () =>{
       </View>
 
       {/* Transcript Section */}
-      <Text className="text-sky-500 text-xs font-black uppercase tracking-[2px] mb-4 ml-2">
+      <Text className="text-sky-500 text-xs font-black uppercase tracking-[2px] mb-4 ml-2 mt-8">
         Live Transcript
       </Text>
 

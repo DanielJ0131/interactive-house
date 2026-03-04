@@ -15,10 +15,23 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { auth } from '../../utils/firebaseConfig';
-import { signInWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { useGuest } from '../../utils/GuestContext';
+
+const AUTH_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Request timed out. Please check your connection and try again.')), ms)
+    ),
+  ]);
+}
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { setIsGuest } = useGuest();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -35,7 +48,7 @@ export default function LoginScreen() {
     setIsLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
+      await withTimeout(signInWithEmailAndPassword(auth, email.trim(), password), AUTH_TIMEOUT_MS);
       router.replace('/(tabs)/home');
     } catch (error: any) {
       console.error('Login error:', error.code, error.message);
@@ -64,17 +77,9 @@ export default function LoginScreen() {
     }
   };
 
-  const handleGuestLogin = async () => {
-    setIsLoading(true);
-    try {
-      await signInAnonymously(auth);
-      router.replace('/(tabs)/home');
-    } catch (error: any) {
-      console.error('Guest login error:', error.code, error.message);
-      Alert.alert('Guest Login Failed', 'Unable to sign in as a guest.');
-    } finally {
-      setIsLoading(false);
-    }
+  const handleGuestLogin = () => {
+    setIsGuest(true);
+    router.replace('/(tabs)/home');
   };
 
   return (
@@ -160,10 +165,9 @@ export default function LoginScreen() {
             </View>
 
             {/* Action Buttons */}
-            <View className="mt-8 space-y-4">
-              <TouchableOpacity
-                className={`p-4 rounded-2xl items-center ${isLoading ? 'bg-sky-900' : 'bg-sky-500 active:bg-sky-600 shadow-lg shadow-sky-500/20'
-                  }`}
+            <View className="mt-8">
+              <Pressable
+                className={`p-5 rounded-2xl items-center ${isLoading ? 'bg-sky-900' : 'bg-sky-500 active:bg-sky-600 shadow-lg shadow-sky-500/20'}`}
                 onPress={handleLogin}
                 disabled={isLoading}
               >
@@ -172,15 +176,18 @@ export default function LoginScreen() {
                 ) : (
                   <Text className="text-white font-bold text-lg">Sign In</Text>
                 )}
-              </TouchableOpacity>
+              </Pressable>
 
-              <TouchableOpacity
-                className="p-4 rounded-2xl items-center border border-slate-700 active:bg-slate-800"
+              <Pressable
+                className="mt-6 py-2 active:opacity-60"
                 onPress={handleGuestLogin}
                 disabled={isLoading}
               >
-                <Text className="text-slate-300 font-bold text-lg">Continue as Guest</Text>
-              </TouchableOpacity>
+                <View className="flex-row justify-center items-center">
+                  <Text className="text-slate-500 font-semibold text-base">Continue as Guest </Text>
+                  <MaterialCommunityIcons name="arrow-right" size={18} color="#64748b" />
+                </View>
+              </Pressable>
             </View>
 
             {/* Redirect to Signup */}

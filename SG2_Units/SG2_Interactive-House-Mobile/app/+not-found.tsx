@@ -30,15 +30,12 @@ export default function NotFoundScreen() {
 
         <View>
           {/* Back Button */}
-          <View className="items-center">
-            <Pressable
-              onPress={() => router.back()}
-              className="flex-row items-center p-2 active:opacity-60"
-            >
-              <Text className="text-white bg-slate-900/80 border border-slate-800 p-3 rounded-full active:bg-slate-800"
-              >Go Back</Text>
-            </Pressable>
-          </View>
+          <Pressable
+            onPress={() => router.replace('/')}
+            className="bg-sky-500 p-5 rounded-2xl active:bg-sky-600 shadow-lg shadow-sky-500/20"
+          >
+            <Text className="text-white text-center font-bold text-lg">Go Home</Text>
+          </Pressable>
         </View>
 
         <View className="items-center">

@@ -4,6 +4,6 @@ import SpeechScreen from '../app/(tabs)/speech';
 
 test('SpeechScreen shows placeholder text', () => {
   const { getByText } = render(<SpeechScreen />);
-  getByText('Speech Recognition + Voice Commands');
-  getByText('WORK IN PROGRESS');
+  getByText('Voice Control');
+  getByText('Your speech will appear here...');
 });

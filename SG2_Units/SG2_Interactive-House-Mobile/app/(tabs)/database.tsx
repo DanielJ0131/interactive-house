@@ -9,30 +9,21 @@ import {
   Platform 
 } from 'react-native';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
-import { onAuthStateChanged, User } from 'firebase/auth';
 import { db, auth } from '../../utils/firebaseConfig';
 
 export default function DatabaseScreen() {
   const [deviceData, setDeviceData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const user = auth.currentUser;
 
-  // 1. Monitor Auth State
+  // Listen to the "devices" collection
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (authenticatedUser) => {
-      setUser(authenticatedUser);
-      if (!authenticatedUser) {
-        setLoading(false);
-        setError("Please login to view devices.");
-      }
-    });
-    return () => unsubscribeAuth();
-  }, []);
-
-  // 2. Listen to the "devices" collection
-  useEffect(() => {
-    if (!user || !user.email) return;
+    if (!user || !user.email) {
+      setLoading(false);
+      setError("Please login to view devices.");
+      return;
+    }
 
     const docRef = doc(db, "devices", user.email);
 

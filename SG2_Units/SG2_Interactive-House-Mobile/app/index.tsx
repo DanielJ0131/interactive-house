@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, Platform, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -7,13 +7,44 @@ import { StatusBar } from 'expo-status-bar';
 
 // 1. Import Firebase auth
 import { auth } from '../utils/firebaseConfig'; 
-import { signInAnonymously } from 'firebase/auth';
+import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
+import { useGuest } from '../utils/GuestContext';
+
+const AUTH_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Request timed out. Please check your connection and try again.')), ms)
+    ),
+  ]);
+}
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const { setIsGuest } = useGuest();
   
   // 2. Add a loading state for the guest login
   const [isLoadingGuest, setIsLoadingGuest] = useState(false);
+  const [isAuthChecking, setIsAuthChecking] = useState(() => Boolean(auth.currentUser));
+
+  useEffect(() => {
+    if (auth.currentUser) {
+      router.replace('/(tabs)/home');
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        router.replace('/(tabs)/home');
+        return;
+      }
+      setIsAuthChecking(false);
+    });
+
+    return unsubscribe;
+  }, [router]);
 
   const handleNavigation = (path: string, e?: any) => {
     if (Platform.OS === 'web' && e) {
@@ -23,19 +54,20 @@ export default function WelcomeScreen() {
     router.push(path as any);
   };
 
-  // 3. Add the Guest Login handler
-  const handleGuestLogin = async () => {
-    setIsLoadingGuest(true);
-    try {
-      await signInAnonymously(auth);
-      router.push('/(tabs)/home');
-    } catch (error: any) {
-      console.error('Guest login error:', error.code, error.message);
-      Alert.alert('Error', 'Could not sign in as a guest. Please check your connection.');
-    } finally {
-      setIsLoadingGuest(false);
-    }
+  // 3. Guest login — no Firebase, just local state
+  const handleGuestLogin = () => {
+    setIsGuest(true);
+    router.replace('/(tabs)/home');
   };
+
+  if (isAuthChecking) {
+    return (
+      <SafeAreaView className="flex-1 bg-[#020617] items-center justify-center">
+        <StatusBar style="light" />
+        <ActivityIndicator size="large" color="#0ea5e9" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-[#020617]">

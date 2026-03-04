@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, FlatList, Keyboard, ActivityIndicator } from "react-native";
-import { geminiModel } from "../../utils/firebaseConfig";
+import { View, Text, TextInput, TouchableOpacity, FlatList, Keyboard, ActivityIndicator, Platform } from "react-native";
+import { getGeminiModel } from "../../utils/firebaseConfig";
 
 type Message = { id: string; text: string; sender: "user" | "ai" };
 
@@ -9,11 +9,19 @@ export default function AiScreen() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const listRef = useRef<FlatList<Message>>(null);
-  
-  // 1. Initialize a persistent chat session
-  const chatSession = useRef(geminiModel.startChat({
-    history: [], // You can pass existing Firestore history here if needed
-  }));
+  const chatSessionRef = useRef<ReturnType<ReturnType<typeof getGeminiModel>["startChat"]> | null>(null);
+
+  const getChatSession = () => {
+    if (chatSessionRef.current) {
+      return chatSessionRef.current;
+    }
+
+    chatSessionRef.current = getGeminiModel().startChat({
+      history: [],
+    });
+
+    return chatSessionRef.current;
+  };
 
   const handleSend = async () => {
     const trimmed = input.trim();
@@ -23,12 +31,9 @@ export default function AiScreen() {
     setMessages(prev => [...prev, userMsg]);
     setInput("");
     setLoading(true);
-    Keyboard.dismiss();
 
     try {
-      // 2. Use sendMessage() instead of generateContent()
-      // This automatically appends to the chat history
-      const result = await chatSession.current.sendMessage(trimmed);
+      const result = await getChatSession().sendMessage(trimmed);
       const aiText = result.response.text();
 
       setMessages(prev => [...prev, {
@@ -55,6 +60,8 @@ export default function AiScreen() {
       <FlatList
         ref={listRef}
         data={messages}
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => (
           <View className={`my-2 p-3 rounded-2xl ${item.sender === 'user' ? 'bg-sky-600 self-end' : 'bg-slate-800 self-start'}`}>
             <Text className="text-white text-[15px]">{item.text}</Text>

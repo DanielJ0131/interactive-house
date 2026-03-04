@@ -8,6 +8,7 @@ import { useEffect } from 'react';
 import { Pressable, StatusBar, LogBox, Platform } from 'react-native';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GuestProvider } from '../utils/GuestContext';
 import "../global.css";
 
 // 1. SILENCE LIBRARY WARNINGS
@@ -17,6 +18,10 @@ if (Platform.OS === 'web') {
     'Blocked aria-hidden on an element',
   ]);
 }
+
+LogBox.ignoreLogs([
+  'SafeAreaView has been deprecated and will be removed in a future release. Please use \"react-native-safe-area-context\" instead.',
+]);
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -58,6 +63,7 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider style={{ backgroundColor: '#020617' }}>
+      <GuestProvider>
       {/* 3. STATUS BAR STABILITY: translucent={false} prevents layout jumping */}
       <StatusBar 
         barStyle="light-content" 
@@ -65,6 +71,7 @@ export default function RootLayout() {
         translucent={false} 
       />
       <RootLayoutNav />
+      </GuestProvider>
     </SafeAreaProvider>
   );
 }
