@@ -70,7 +70,7 @@ describe('Firestore Database', () => {
   // ── Signup: parallel document writes ─────────────────────────────────────
 
   describe('Signup document creation', () => {
-    it('writes both devices and users docs for a new account', async () => {
+    it('writes shared devices doc and user profile doc for a new account', async () => {
       mockSetDoc.mockResolvedValue(undefined);
       const { db } = require('../utils/firebaseConfig');
       const { doc, setDoc } = require('firebase/firestore');
@@ -79,14 +79,14 @@ describe('Firestore Database', () => {
       const name = 'New User';
 
       await Promise.all([
-        setDoc(doc(db, 'devices', email), INITIAL_DEVICE_DATA),
+        setDoc(doc(db, 'devices', 'arduino'), INITIAL_DEVICE_DATA),
         setDoc(doc(db, 'users', email), {
           name,
           createdAt: expect.any(String),
         }),
       ]);
 
-      expect(mockDoc).toHaveBeenCalledWith(db, 'devices', email);
+      expect(mockDoc).toHaveBeenCalledWith(db, 'devices', 'arduino');
       expect(mockDoc).toHaveBeenCalledWith(db, 'users', email);
       expect(mockSetDoc).toHaveBeenCalledTimes(2);
     });
@@ -97,7 +97,7 @@ describe('Firestore Database', () => {
       const { doc, setDoc } = require('firebase/firestore');
 
       await expect(
-        setDoc(doc(db, 'devices', 'bad@example.com'), INITIAL_DEVICE_DATA)
+        setDoc(doc(db, 'devices', 'arduino'), INITIAL_DEVICE_DATA)
       ).rejects.toThrow('permission-denied');
     });
   });
@@ -117,7 +117,7 @@ describe('Firestore Database', () => {
       const { doc, onSnapshot } = require('firebase/firestore');
 
       const callback = jest.fn();
-      const unsub = onSnapshot(doc(db, 'devices', 'test@example.com'), (snap: any) => {
+      const unsub = onSnapshot(doc(db, 'devices', 'arduino'), (snap: any) => {
         if (snap.exists()) callback(snap.data());
       });
 
@@ -138,7 +138,7 @@ describe('Firestore Database', () => {
       const callback = jest.fn();
       const errorCallback = jest.fn();
 
-      onSnapshot(doc(db, 'devices', 'missing@example.com'), (snap: any) => {
+      onSnapshot(doc(db, 'devices', 'arduino'), (snap: any) => {
         if (snap.exists()) {
           callback(snap.data());
         } else {
@@ -161,7 +161,7 @@ describe('Firestore Database', () => {
 
       const errorCallback = jest.fn();
       onSnapshot(
-        doc(db, 'devices', 'test@example.com'),
+        doc(db, 'devices', 'arduino'),
         jest.fn(),
         (err: Error) => errorCallback(err.message)
       );
@@ -178,11 +178,11 @@ describe('Firestore Database', () => {
       const { db } = require('../utils/firebaseConfig');
       const { doc, updateDoc } = require('firebase/firestore');
 
-      const docRef = doc(db, 'devices', 'test@example.com');
+      const docRef = doc(db, 'devices', 'arduino');
       await updateDoc(docRef, { 'buzzer.state': 'on' });
 
       expect(mockUpdateDoc).toHaveBeenCalledWith(
-        { path: 'devices/test@example.com' },
+        { path: 'devices/arduino' },
         { 'buzzer.state': 'on' }
       );
     });
@@ -195,9 +195,9 @@ describe('Firestore Database', () => {
       const currentState = 'closed';
       const newState = currentState === 'closed' ? 'open' : 'closed';
 
-      await updateDoc(doc(db, 'devices', 'test@example.com'), { 'door.state': newState });
+      await updateDoc(doc(db, 'devices', 'arduino'), { 'door.state': newState });
       expect(mockUpdateDoc).toHaveBeenCalledWith(
-        expect.objectContaining({ path: 'devices/test@example.com' }),
+        expect.objectContaining({ path: 'devices/arduino' }),
         { 'door.state': 'open' }
       );
     });
@@ -210,9 +210,9 @@ describe('Firestore Database', () => {
       const currentState = 'on';
       const newState = currentState === 'on' ? 'off' : 'on';
 
-      await updateDoc(doc(db, 'devices', 'test@example.com'), { 'white_light.state': newState });
+      await updateDoc(doc(db, 'devices', 'arduino'), { 'white_light.state': newState });
       expect(mockUpdateDoc).toHaveBeenCalledWith(
-        expect.objectContaining({ path: 'devices/test@example.com' }),
+        expect.objectContaining({ path: 'devices/arduino' }),
         { 'white_light.state': 'off' }
       );
     });
@@ -223,7 +223,7 @@ describe('Firestore Database', () => {
       const { doc, updateDoc } = require('firebase/firestore');
 
       await expect(
-        updateDoc(doc(db, 'devices', 'test@example.com'), { 'buzzer.state': 'on' })
+        updateDoc(doc(db, 'devices', 'arduino'), { 'buzzer.state': 'on' })
       ).rejects.toThrow('permission-denied');
     });
   });

@@ -8,8 +8,9 @@ import {
   Alert, 
   Platform 
 } from 'react-native';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { onSnapshot, updateDoc } from 'firebase/firestore';
 import { db, auth } from '../../utils/firebaseConfig';
+import { ARDUINO_DOC_ID, getArduinoDevicesDocRef } from '../../utils/firestorePaths';
 
 export default function DatabaseScreen() {
   const [deviceData, setDeviceData] = useState<any>(null);
@@ -19,20 +20,14 @@ export default function DatabaseScreen() {
 
   // Listen to the "devices" collection
   useEffect(() => {
-    if (!user || !user.email) {
-      setLoading(false);
-      setError("Please login to view devices.");
-      return;
-    }
-
-    const docRef = doc(db, "devices", user.email);
+    const docRef = getArduinoDevicesDocRef(db);
 
     const unsubscribeData = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         setDeviceData(docSnap.data());
         setError(null);
       } else {
-        setError(`No device configuration found for ${user.email}`);
+        setError(`No device configuration found for ${ARDUINO_DOC_ID}`);
       }
       setLoading(false);
     }, (err) => {
@@ -42,11 +37,12 @@ export default function DatabaseScreen() {
     });
 
     return () => unsubscribeData();
-  }, [user]);
+  }, []);
 
   // 3. Update specific state within the Map without overwriting other fields (pin/value)
   const toggleDevice = async (deviceName: string) => {
-    if (!user?.email || !deviceData?.[deviceName]) return;
+    if (deviceName === 'fan_INB') return;
+    if (!deviceData?.[deviceName]) return;
 
     const currentDevice = deviceData[deviceName];
     const currentState = currentDevice.state;
@@ -60,7 +56,7 @@ export default function DatabaseScreen() {
     }
 
     try {
-      const docRef = doc(db, "devices", user.email);
+      const docRef = getArduinoDevicesDocRef(db);
       // We use dot notation "deviceName.state" to only update that specific field
       await updateDoc(docRef, {
         [`${deviceName}.state`]: newState
@@ -95,8 +91,7 @@ export default function DatabaseScreen() {
         <View style={{ gap: 15 }}>
           <DeviceCard name="White Light" data={deviceData.white_light} onToggle={() => toggleDevice('white_light')} />
           <DeviceCard name="Orange Light" data={deviceData.orange_light} onToggle={() => toggleDevice('orange_light')} />
-          <DeviceCard name="Fan INA" data={deviceData.fan_INA} onToggle={() => toggleDevice('fan_INA')} />
-          <DeviceCard name="Fan INB" data={deviceData.fan_INB} onToggle={() => toggleDevice('fan_INB')} />
+          <DeviceCard name="Fan" data={deviceData.fan_INA} onToggle={() => toggleDevice('fan_INA')} />
           <DeviceCard name="Door" data={deviceData.door} onToggle={() => toggleDevice('door')} />
           <DeviceCard name="Window" data={deviceData.window} onToggle={() => toggleDevice('window')} />
           <DeviceCard name="Buzzer" data={deviceData.buzzer} onToggle={() => toggleDevice('buzzer')} />

@@ -17,8 +17,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 // Firebase Imports
 import { auth, db } from '../../utils/firebaseConfig';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { INITIAL_DEVICE_DATA } from '../../data/deviceDefaults';
+import { getArduinoDevicesDocRef } from '../../utils/firestorePaths';
 
 const AUTH_TIMEOUT_MS = 15_000;
 
@@ -60,8 +61,14 @@ export default function SignupScreen() {
       
       await updateProfile(user, { displayName: name });
 
+      const arduinoDocRef = getArduinoDevicesDocRef(db);
+      const arduinoDocSnap = await getDoc(arduinoDocRef);
+      const deviceWritePromise = arduinoDocSnap.exists()
+        ? Promise.resolve()
+        : setDoc(arduinoDocRef, INITIAL_DEVICE_DATA);
+
       await Promise.all([
-        setDoc(doc(db, "devices", user.email!), INITIAL_DEVICE_DATA),
+        deviceWritePromise,
         setDoc(doc(db, "users", user.email!), {
           name: name,
           createdAt: new Date().toISOString()
