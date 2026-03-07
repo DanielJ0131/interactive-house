@@ -1,15 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 
 export default function DevicesPage() {
-    const sp = useSearchParams();
-    const isGuest = sp.get("guest") === "1";
-
     useEffect(() => {
+        const sp = new URLSearchParams(window.location.search);
+        const isGuest = sp.get("guest") === "1";
         if (isGuest) localStorage.setItem("guest", "1");
-    }, [isGuest]);
+    }, []);
 
     return (
         <main className="min-h-screen bg-[#0A122B] p-6">
