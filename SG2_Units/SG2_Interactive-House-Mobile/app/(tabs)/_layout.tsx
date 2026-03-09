@@ -7,6 +7,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { onSnapshotsInSync } from 'firebase/firestore';
 import { db, auth } from '../../utils/firebaseConfig';
 import { useGuest } from '../../utils/GuestContext';
+import SpeechOverlay from "../../components/speechOverlay";
 
 cssInterop(MaterialCommunityIcons, {
   className: 'style',
@@ -88,6 +89,7 @@ export default function TabLayout() {
   const isSystemReady = isGuest || (isConnected && isLoggedIn);
 
   return (
+    <View style={{ flex: 1 }}>
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: '#0ea5e9',
@@ -156,13 +158,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <MaterialCommunityIcons name="robot-industrial" size={26} color={color} />,
         }}
       />
-      <Tabs.Screen
+      {/* <Tabs.Screen
         name="speech"
         options={{
           title: 'Speech',
           tabBarIcon: ({ color }) => <MaterialCommunityIcons name="waveform" size={26} color={color} />,
         }}
-      />
+      /> */}
       <Tabs.Screen
         name="device_hub"
         options={{
@@ -178,5 +180,8 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+     <SpeechOverlay />
+
+  </View>
   );
 }

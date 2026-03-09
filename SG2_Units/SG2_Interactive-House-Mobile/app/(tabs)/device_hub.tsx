@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, memo, useEffect, useRef } from '
 import { ScrollView, Switch, Text, View, Pressable, Animated, Easing } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { registerHubController } from '../../utils/hubController';
 import Slider from '@react-native-community/slider';
 import deviceConfig from '../../data/devices-config.json';
 
@@ -236,6 +237,16 @@ export default function DeviceHubScreen() {
   const updateSliderValue = useCallback((id: string, val: number) => setSliderValues(p => ({ ...p, [id]: val })), []);
   const handleBuzzerPress = useCallback((id: string, p: boolean) => setDeviceStates(prev => ({ ...prev, [id]: p })), []);
   const toggleFanDirection = useCallback((id: string) => setFanDirections(p => ({ ...p, [id]: !p[id] })), []);
+
+  useEffect(() => {
+  registerHubController({
+    toggleDevice,
+    setSlider: updateSliderValue,
+    buzzerPress: handleBuzzerPress,
+    toggleDirection: toggleFanDirection
+  })
+  }, 
+  [toggleDevice, updateSliderValue, handleBuzzerPress, toggleFanDirection])
 
   return (
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: '#020617' }}>
