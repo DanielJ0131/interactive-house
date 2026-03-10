@@ -1,156 +1,100 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, FlatList } from "react-native";
+import React, { useRef, useState, useEffect } from "react";
+import { View, Text, TextInput, TouchableOpacity, FlatList, Keyboard, ActivityIndicator, Platform } from "react-native";
+import { getGeminiModel } from "../../utils/firebaseConfig";
 
-/**
- * Message type definition
- * Represents a single chat message in the conversation.
- */
-type Message = {
-  id: string;              // Unique identifier for each message
-  text: string;            // Message content
-  sender: "user" | "ai";   // Indicates whether message is from user or AI
-};
+type Message = { id: string; text: string; sender: "user" | "ai" };
 
-/**
- * AiScreen Component
- *
- * AI chat interface connected to backend proxy.
- * - Sends user messages to backend endpoint
- * - Backend communicates with Gemini API
- * - Displays AI responses in chat format
- */
 export default function AiScreen() {
-
-  // Stores the full chat conversation
   const [messages, setMessages] = useState<Message[]>([]);
-
-  // Stores the current user input
   const [input, setInput] = useState("");
-
-  // Controls loading state while waiting for AI response
   const [loading, setLoading] = useState(false);
+  const listRef = useRef<FlatList<Message>>(null);
+  const chatSessionRef = useRef<ReturnType<ReturnType<typeof getGeminiModel>["startChat"]> | null>(null);
 
-  /**
-   * handleSend()
-   * Triggered when user presses the "Send" button.
-   * - Adds user message to chat
-   * - Calls backend API
-   * - Displays AI response
-   */
+  const getChatSession = () => {
+    if (chatSessionRef.current) {
+      return chatSessionRef.current;
+    }
+
+    chatSessionRef.current = getGeminiModel().startChat({
+      history: [],
+    });
+
+    return chatSessionRef.current;
+  };
+
   const handleSend = async () => {
+    const trimmed = input.trim();
+    if (!trimmed || loading) return;
 
-    // Prevent sending empty messages
-    if (!input.trim()) return;
-
-    // Create user message object
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: input,
-      sender: "user",
-    };
-
-    // Add user message to chat list
-    setMessages((prev) => [...prev, userMessage]);
-
-    // Clear input field
+    const userMsg: Message = { id: Date.now().toString(), text: trimmed, sender: "user" };
+    setMessages(prev => [...prev, userMsg]);
     setInput("");
-
-    // Show loading indicator
     setLoading(true);
 
     try {
-      // Send request to backend proxy (Gemini API handled server-side)
-      const response = await fetch(
-        "http://192.168.0.40:3000/api/ai-chat",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ message: userMessage.text }),
-        }
-      );
+      const result = await getChatSession().sendMessage(trimmed);
+      const aiText = result.response.text();
 
-      // Parse backend response
-      const data = await response.json();
-
-      // Create AI message from backend reply
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text:
-          data?.reply ||
-          data?.error ||
-          "No response from AI.",
-        sender: "ai",
-      };
-
-      // Add AI response to chat
-      setMessages((prev) => [...prev, aiMessage]);
-
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        text: aiText || "I'm not sure how to help with that.",
+        sender: "ai"
+      }]);
     } catch (error) {
-
-      // If backend is unreachable or network fails
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          text:
-            "Could not reach AI backend. Make sure the server is running and on the same Wi-Fi.",
-          sender: "ai",
-        },
-      ]);
-
+      console.error("AI Error:", error);
+      setMessages(prev => [...prev, {
+        id: "error",
+        text: "I lost my connection to the house. Please try again.",
+        sender: "ai"
+      }]);
     } finally {
-      // Hide loading indicator
       setLoading(false);
+      listRef.current?.scrollToEnd({ animated: true });
     }
   };
 
   return (
-    <View className="flex-1 bg-gray-100">
-
-      {/* Chat Message List */}
+    <View className="flex-1 bg-[#020617] p-4">
+      {/* ... UI remains largely the same ... */}
       <FlatList
+        ref={listRef}
         data={messages}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 12 }}
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => (
-          <View
-            className={`p-3 my-1 rounded-xl max-w-[80%] ${
-              item.sender === "user"
-                ? "self-end bg-blue-500"      // User messages aligned right
-                : "self-start bg-gray-300"    // AI messages aligned left
-            }`}
-          >
-            <Text className="text-black">{item.text}</Text>
+          <View className={`my-2 p-3 rounded-2xl ${item.sender === 'user' ? 'bg-sky-600 self-end' : 'bg-slate-800 self-start'}`}>
+            <Text className="text-white text-[15px]">{item.text}</Text>
           </View>
         )}
+        keyExtractor={item => item.id}
+        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
       />
-
-      {/* Loading Indicator */}
+      
       {loading && (
-        <Text className="text-center text-gray-500 italic mb-2">
-          AI is typing...
-        </Text>
+        <View className="flex-row items-center mb-4 ml-2">
+          <ActivityIndicator size="small" color="#0ea5e9" />
+          <Text className="text-slate-500 italic ml-2">House is thinking...</Text>
+        </View>
       )}
 
-      {/* Input Section */}
-      <View className="flex-row p-3 bg-white border-t border-gray-300">
+      <View className="flex-row items-center border-t border-slate-900 pt-4 bg-[#020617]">
         <TextInput
+          className="flex-1 bg-slate-900 text-white p-4 rounded-2xl border border-slate-800"
           value={input}
           onChangeText={setInput}
-          placeholder="Ask something..."
-          className="flex-1 border border-gray-300 rounded-lg px-3 py-2"
+          placeholder="Command your home..."
+          placeholderTextColor="#64748b"
+          editable={!loading}
         />
-
-        <TouchableOpacity
-          onPress={handleSend}
-          className="ml-2 bg-blue-500 px-4 justify-center rounded-lg"
+        <TouchableOpacity 
+          onPress={handleSend} 
+          disabled={loading || !input.trim()}
+          className={`ml-3 p-4 rounded-2xl ${loading || !input.trim() ? 'bg-slate-800' : 'bg-sky-500'}`}
         >
           <Text className="text-white font-bold">Send</Text>
         </TouchableOpacity>
       </View>
-
     </View>
   );
 }

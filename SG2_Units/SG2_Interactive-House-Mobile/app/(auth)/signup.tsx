@@ -1,9 +1,36 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, Platform, ScrollView, KeyboardAvoidingView, Alert } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  Pressable, 
+  Platform, 
+  ScrollView, 
+  KeyboardAvoidingView, 
+  Alert, 
+  ActivityIndicator 
+} from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { API_BASE_URL, REGISTRATION_API_KEY } from '../../utils/firebaseConfig';
+
+// Firebase Imports
+import { auth, db } from '../../utils/firebaseConfig';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { INITIAL_DEVICE_DATA } from '../../data/deviceDefaults';
+import { getArduinoDevicesDocRef } from '../../utils/firestorePaths';
+
+const AUTH_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Request timed out. Please check your connection and try again.')), ms)
+    ),
+  ]);
+}
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -13,9 +40,7 @@ export default function SignupScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSignup = async (e: any) => {
-    if (Platform.OS === 'web') e.currentTarget.blur();
-
+  const handleSignup = async () => {
     if (!name || !email || !password || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -26,32 +51,53 @@ export default function SignupScreen() {
       return;
     }
 
+    if (isSubmitting) return;
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/users/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': REGISTRATION_API_KEY || '',
-        },
-        body: JSON.stringify({
-          username: email,
-          password: password,
+      const cleanEmail = email.trim().toLowerCase();
+      const userCredential = await withTimeout(createUserWithEmailAndPassword(auth, cleanEmail, password), AUTH_TIMEOUT_MS);
+      const user = userCredential.user;
+      
+      await updateProfile(user, { displayName: name });
+
+      const arduinoDocRef = getArduinoDevicesDocRef(db);
+      const arduinoDocSnap = await getDoc(arduinoDocRef);
+      const deviceWritePromise = arduinoDocSnap.exists()
+        ? Promise.resolve()
+        : setDoc(arduinoDocRef, INITIAL_DEVICE_DATA);
+
+      await Promise.all([
+        deviceWritePromise,
+        setDoc(doc(db, "users", user.email!), {
+          name: name,
+          createdAt: new Date().toISOString()
         }),
-      });
+      ]);
 
-      const data = await response.json();
-
-      if (response.status === 201) {
-        Alert.alert('Success', 'Account created! Please log in.');
-        router.replace('/login');
-      } else {
-        Alert.alert('Registration Failed', data.message || 'Check your API Key or if user exists.');
+      Alert.alert('Success', 'Account created successfully!', [
+        { text: 'OK', onPress: () => router.replace('/(tabs)/home') }
+      ]);
+      
+    } catch (error: any) {
+      console.error('Signup error:', error.code, error.message);
+      
+      let errorMessage = 'Could not create account.';
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          errorMessage = 'This email is already registered. Try logging in.';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Please enter a valid email address.';
+          break;
+        case 'auth/weak-password':
+          errorMessage = 'Password should be at least 6 characters.';
+          break;
+        default:
+          errorMessage = error.message;
       }
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Network Error', 'Could not connect to the smart home server.');
+      
+      Alert.alert('Registration Failed', errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -66,7 +112,7 @@ export default function SignupScreen() {
         <ScrollView className="flex-1" contentContainerStyle={{ flexGrow: 1 }}>
           <View className="flex-1 justify-center p-8">
             
-            {/* UPDATED: Back Button with Absolute Positioning to match Login */}
+            {/* Back Button */}
             <View className="absolute top-4 left-4 z-10">
               <Pressable 
                 onPress={() => router.replace('/')} 
@@ -77,14 +123,13 @@ export default function SignupScreen() {
               </Pressable>
             </View>
 
-            {/* Added top margin to the header to prevent overlap with the back button */}
             <View className="mt-8">
               <Text className="text-white text-4xl font-bold mb-2">Create Account</Text>
-              <Text className="text-slate-500 mb-8">Start your smart home journey today.</Text>
+              <Text className="text-slate-500 mb-8">Start your Interactive House journey today.</Text>
             </View>
 
             <View className="space-y-4">
-              <Text className="text-slate-400 mb-2 ml-1 font-medium">Full Name</Text>
+              <Text className="text-slate-400 mb-1 ml-1 font-medium">Full Name</Text>
               <TextInput
                 placeholder="Name Example"
                 placeholderTextColor="#475569"
@@ -93,7 +138,7 @@ export default function SignupScreen() {
                 className="bg-slate-900 border border-slate-800 text-white p-4 rounded-2xl mb-4"
               />
 
-              <Text className="text-slate-400 mb-2 ml-1 font-medium">Username (Email)</Text>
+              <Text className="text-slate-400 mb-1 ml-1 font-medium">Email Address</Text>
               <TextInput
                 placeholder="name@example.com"
                 placeholderTextColor="#475569"
@@ -104,7 +149,7 @@ export default function SignupScreen() {
                 className="bg-slate-900 border border-slate-800 text-white p-4 rounded-2xl mb-4"
               />
 
-              <Text className="text-slate-400 mb-2 ml-1 font-medium">Password</Text>
+              <Text className="text-slate-400 mb-1 ml-1 font-medium">Password</Text>
               <TextInput
                 placeholder="••••••••"
                 placeholderTextColor="#475569"
@@ -114,7 +159,7 @@ export default function SignupScreen() {
                 secureTextEntry
               />
 
-              <Text className="text-slate-400 mb-2 ml-1 font-medium">Confirm Password</Text>
+              <Text className="text-slate-400 mb-1 ml-1 font-medium">Confirm Password</Text>
               <TextInput
                 placeholder="••••••••"
                 placeholderTextColor="#475569"
@@ -127,11 +172,13 @@ export default function SignupScreen() {
               <Pressable
                 onPress={handleSignup}
                 disabled={isSubmitting}
-                className={`p-5 rounded-2xl shadow-lg ${isSubmitting ? 'bg-slate-700' : 'bg-sky-500 active:bg-sky-600 shadow-sky-500/20'}`}
+                className={`p-5 rounded-2xl shadow-lg mt-4 ${isSubmitting ? 'bg-sky-900' : 'bg-sky-500 active:bg-sky-600 shadow-sky-500/20'}`}
               >
-                <Text className="text-white text-center font-bold text-lg">
-                  {isSubmitting ? 'Creating...' : 'Create Account'}
-                </Text>
+                {isSubmitting ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text className="text-white text-center font-bold text-lg">Create Account</Text>
+                )}
               </Pressable>
             </View>
 
