@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-from src.serial_client import SerialClient
+from serial_client import SerialClient
 
 load_dotenv("config/.env")
 

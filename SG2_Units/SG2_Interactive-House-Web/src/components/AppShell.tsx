@@ -42,8 +42,8 @@ export default function AppShell({
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             <Link href="/login" className="font-semibold tracking-tight hover:opacity-80">
-  Smart Home
-</Link>
+              Smart Home
+            </Link>
             <span className="text-white/30">/</span>
             <h1 className="text-sm text-white/70">{title}</h1>
           </div>

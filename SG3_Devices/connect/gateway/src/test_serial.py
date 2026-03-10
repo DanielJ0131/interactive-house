@@ -1,4 +1,4 @@
-from src.serial_client import SerialClient
+from serial_client import SerialClient
 
 sc = SerialClient()
 print("F or D for fan or door, q to quit")

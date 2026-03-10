@@ -1,7 +1,11 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   --bg: #0b1220;
+  --text: #e5e7eb;
+  /* gray-200 */
 }
 
 html,
@@ -9,31 +13,57 @@ body {
   height: 100%;
 }
 
-/* Modern dark + gradient base */
 body {
-  background: radial-gradient(1200px circle at 20% 20%, rgba(99, 102, 241, 0.35), transparent 45%),
-              radial-gradient(900px circle at 80% 30%, rgba(236, 72, 153, 0.25), transparent 55%),
-              radial-gradient(1100px circle at 50% 90%, rgba(34, 197, 94, 0.18), transparent 55%),
-              var(--bg);
-  color: #e5e7eb; /* gray-200 */
+  min-height: 100%;
+  margin: 0;
+  background:
+    radial-gradient(1200px circle at 20% 20%, rgba(99, 102, 241, 0.35), transparent 45%),
+    radial-gradient(900px circle at 80% 30%, rgba(236, 72, 153, 0.25), transparent 55%),
+    radial-gradient(1100px circle at 50% 90%, rgba(34, 197, 94, 0.18), transparent 55%),
+    var(--bg);
+  color: var(--text);
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* soft scrollbars */
-::-webkit-scrollbar { width: 10px; }
+/* Soft scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
 ::-webkit-scrollbar-thumb {
   background: rgba(148, 163, 184, 0.35);
   border-radius: 999px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.55);
 }
+
+/* Animations */
 @keyframes floaty {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 @keyframes glow {
-  0%, 100% { opacity: 0.55; transform: scale(1); }
-  50% { opacity: 0.9; transform: scale(1.08); }
+
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.9;
+    transform: scale(1.08);
+  }
 }
