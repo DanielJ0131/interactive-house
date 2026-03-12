@@ -76,7 +76,7 @@ export default function SignupScreen() {
       ]);
 
       Alert.alert('Success', 'Account created successfully!', [
-        { text: 'OK', onPress: () => router.replace('/(tabs)/home') }
+        { text: 'OK', onPress: () => router.replace('/(tabs)/hub') }
       ]);
       
     } catch (error: any) {

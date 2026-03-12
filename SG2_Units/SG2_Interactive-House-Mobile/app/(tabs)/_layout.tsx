@@ -90,98 +90,87 @@ export default function TabLayout() {
 
   return (
     <View style={{ flex: 1 }}>
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: '#0ea5e9',
-        tabBarInactiveTintColor: '#64748b',
-        tabBarShowLabel: true,
-        headerStyle: {
-          backgroundColor: '#020617',
-          borderBottomWidth: 1,
-          borderBottomColor: '#1e293b',
-        },
-        headerShadowVisible: false,
-        headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-          fontSize: 18,
-        },
-        headerRight: () => (
-          <View className="flex-row items-center mr-4">
-            <Pressable
-              onPress={handleSignOut}
-              hitSlop={20}
-              className="mr-5 active:opacity-60"
-            >
-              <MaterialCommunityIcons
-                name="logout"
-                size={22}
-                color="#ef4444"
-              />
-            </Pressable>
-
-            <Link href="/modal" asChild>
-              <Pressable hitSlop={20}>
-                {({ pressed }) => (
-                  <MaterialCommunityIcons
-                    name={isLoggedIn ? 'shield-check' : 'shield-alert-outline'}
-                    size={26}
-                    color={isLoggedIn ? '#22c55e' : '#ef4444'}
-                    className={pressed ? 'opacity-60' : 'opacity-100'}
-                  />
-                )}
+      <Tabs
+        initialRouteName="hub"
+        screenOptions={{
+          tabBarActiveTintColor: '#0ea5e9',
+          tabBarInactiveTintColor: '#64748b',
+          tabBarShowLabel: true,
+          headerStyle: {
+            backgroundColor: '#020617',
+            borderBottomWidth: 1,
+            borderBottomColor: '#1e293b',
+          },
+          headerShadowVisible: false,
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+            fontSize: 18,
+          },
+          headerRight: () => (
+            <View className="flex-row items-center mr-4">
+              <Pressable
+                onPress={handleSignOut}
+                hitSlop={20}
+                className="mr-5 active:opacity-60"
+              >
+                <MaterialCommunityIcons
+                  name="logout"
+                  size={22}
+                  color="#ef4444"
+                />
               </Pressable>
-            </Link>
-          </View>
-        ),
-        tabBarStyle: {
-          backgroundColor: '#020617',
-          borderTopColor: '#1e293b',
-          height: Platform.OS === 'ios' ? 88 : 75,
-          paddingTop: 8,
-          paddingBottom: Platform.OS === 'ios' ? 30 : 12,
-        },
-        tabBarHideOnKeyboard: true,
-      }}
-    >
-      <Tabs.Screen
-        name="home"
-        options={{
-          title: 'Devices',
-          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="memory" size={26} color={color} />
-        }}
-      />
-      <Tabs.Screen
-        name="ai"
-        options={{
-          title: 'AI',
-          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="robot-industrial" size={26} color={color} />,
-        }}
-      />
-      {/* <Tabs.Screen
-        name="speech"
-        options={{
-          title: 'Speech',
-          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="waveform" size={26} color={color} />,
-        }}
-      /> */}
-      <Tabs.Screen
-        name="device_hub"
-        options={{
-          title: 'Hub',
-          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="memory" size={26} color={color} />
-        }}
-      />
-      <Tabs.Screen
-        name="database"
-        options={{
-          title: 'Database',
-          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="database" size={26} color={color} />,
-        }}
-      />
-    </Tabs>
-     <SpeechOverlay />
 
-  </View>
+              <Link href="/modal" asChild>
+                <Pressable hitSlop={20}>
+                  {({ pressed }) => (
+                    <MaterialCommunityIcons
+                      name={isLoggedIn ? 'shield-check' : 'shield-alert-outline'}
+                      size={26}
+                      color={isLoggedIn ? '#22c55e' : '#ef4444'}
+                      className={pressed ? 'opacity-60' : 'opacity-100'}
+                    />
+                  )}
+                </Pressable>
+              </Link>
+            </View>
+          ),
+          tabBarStyle: {
+            backgroundColor: '#020617',
+            borderTopColor: '#1e293b',
+            height: Platform.OS === 'ios' ? 88 : 75,
+            paddingTop: 8,
+            paddingBottom: Platform.OS === 'ios' ? 30 : 12,
+          },
+          tabBarHideOnKeyboard: true,
+        }}
+      >
+        <Tabs.Screen
+          name="hub"
+          options={{
+            title: 'Hub',
+            tabBarIcon: ({ color }) => <MaterialCommunityIcons name="memory" size={26} color={color} />,
+          }}
+        />
+
+        <Tabs.Screen
+          name="ai"
+          options={{
+            title: 'AI',
+            tabBarIcon: ({ color }) => <MaterialCommunityIcons name="robot-industrial" size={26} color={color} />,
+          }}
+        />
+
+        <Tabs.Screen
+          name="music"
+          options={{
+            title: 'Music',
+            tabBarIcon: ({ color }) => <MaterialCommunityIcons name="music" size={26} color={color} />,
+          }}
+        />
+      </Tabs>
+      <SpeechOverlay />
+
+    </View>
   );
 }

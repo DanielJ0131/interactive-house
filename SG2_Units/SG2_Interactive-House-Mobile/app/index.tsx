@@ -31,13 +31,13 @@ export default function WelcomeScreen() {
 
   useEffect(() => {
     if (auth.currentUser) {
-      router.replace('/(tabs)/home');
+      router.replace('/(tabs)/hub');
       return;
     }
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        router.replace('/(tabs)/home');
+        router.replace('/(tabs)/hub');
         return;
       }
       setIsAuthChecking(false);
@@ -57,7 +57,7 @@ export default function WelcomeScreen() {
   // 3. Guest login — no Firebase, just local state
   const handleGuestLogin = () => {
     setIsGuest(true);
-    router.replace('/(tabs)/home');
+    router.replace('/(tabs)/hub');
   };
 
   if (isAuthChecking) {

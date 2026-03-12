@@ -49,7 +49,7 @@ export default function LoginScreen() {
 
     try {
       await withTimeout(signInWithEmailAndPassword(auth, email.trim(), password), AUTH_TIMEOUT_MS);
-      router.replace('/(tabs)/home');
+      router.replace('/(tabs)/hub');
     } catch (error: any) {
       console.error('Login error:', error.code, error.message);
       let errorMessage = 'An unexpected error occurred.';
@@ -79,7 +79,7 @@ export default function LoginScreen() {
 
   const handleGuestLogin = () => {
     setIsGuest(true);
-    router.replace('/(tabs)/home');
+    router.replace('/(tabs)/hub');
   };
 
   return (
