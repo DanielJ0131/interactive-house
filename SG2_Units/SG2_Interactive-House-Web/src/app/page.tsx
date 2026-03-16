@@ -31,7 +31,7 @@ export default function Home() {
           </Link>
 
           <Link
-            href="/devices"
+            href="/guest_hub"
             className="block w-full text-center text-white/45"
           >
             Explore as Guest →
