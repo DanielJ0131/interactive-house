@@ -240,7 +240,7 @@ export default function HubPage() {
     };
 
     const toggleFanINA = async () => {
-        const newState = !fanINB;
+        const newState = !fanINA;
         setFanINA(newState);
 
         await updateDoc(deviceRef, {
