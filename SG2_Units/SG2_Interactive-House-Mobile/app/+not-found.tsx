@@ -1,40 +1,49 @@
 import { Link, Stack } from 'expo-router';
-import { StyleSheet } from 'react-native';
-
-import { Text, View } from '@/components/Themed';
+import { Text, View, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
+import { router } from 'expo-router';
 
 export default function NotFoundScreen() {
   return (
-    <>
-      <Stack.Screen options={{ title: 'Oops!' }} />
-      <View style={styles.container}>
-        <Text style={styles.title}>This screen doesn't exist.</Text>
+    <SafeAreaView className="flex-1 bg-[#020617]">
+      <StatusBar style="light" />
+      <Stack.Screen options={{ title: 'Oops!', headerShown: false }} />
 
-        <Link href="/" style={styles.link}>
-          <Text style={styles.linkText}>Go to home screen!</Text>
-        </Link>
+      <View className="flex-1 px-8 justify-between py-12">
+        <View />
+
+        <View className="items-center">
+          <View className="bg-rose-500/10 p-6 rounded-[32px] mb-8">
+            <MaterialCommunityIcons name="map-marker-off-outline" size={80} color="#f43f5e" />
+          </View>
+
+          <Text className="text-white text-4xl font-black tracking-tight text-center uppercase">
+            Device Not Found
+          </Text>
+
+          <Text className="text-slate-400 text-lg text-center mt-4 leading-6">
+            It looks like this part of the{"\n"}house doesn't exist yet.
+          </Text>
+        </View>
+
+        <View>
+          {/* Back Button */}
+          <Pressable
+            onPress={() => router.replace('/')}
+            className="bg-sky-500 p-5 rounded-2xl active:bg-sky-600 shadow-lg shadow-sky-500/20"
+          >
+            <Text className="text-white text-center font-bold text-lg">Go Home</Text>
+          </Pressable>
+        </View>
+
+        <View className="items-center">
+          <Text className="text-slate-700 text-[10px] uppercase tracking-[4px] font-black">
+            Error 404 • Lost Connection
+          </Text>
+        </View>
       </View>
-    </>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  link: {
-    marginTop: 15,
-    paddingVertical: 15,
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#2e78b7',
-  },
-});

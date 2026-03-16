@@ -1,0 +1,147 @@
+import React, { useState } from "react";
+import { View, Text, Pressable, Alert, PermissionsAndroid, Platform } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { hubController } from '../utils/hubController';
+import { useRouter } from "expo-router";
+
+export default function SpeechOverlay() {
+  const router = useRouter();
+  const [isListening, setIsListening] = useState(false);
+  const [transcript, setTranscript] = useState("");
+
+  let SpeechRecognition: any = null;
+
+  try {
+    SpeechRecognition = require("expo-speech-recognition");
+  } catch (e) {
+    SpeechRecognition = null;
+  }
+
+  const isNativeAvailable = !!SpeechRecognition?.ExpoSpeechRecognitionModule;
+
+  if (isNativeAvailable) {
+    SpeechRecognition.useSpeechRecognitionEvent("result", (event: any) => {
+      const text = event.results?.[0]?.transcript ?? "";
+      setTranscript(text);
+      handleIntent(text);
+    });
+
+    SpeechRecognition.useSpeechRecognitionEvent("end", () => {
+      setIsListening(false);
+    });
+  }
+
+  const handleIntent = (text: string) => {
+    const lower = text.toLowerCase();
+    const hub = hubController();
+
+    if  ( lower.includes ("fan On") || lower.includes("turn on fan"))
+      hub.setSlider?.("fan", 100)
+
+    if (lower.includes("fan Off") || lower.includes("turn off fan"))
+      hub.setSlider?.("fan", 0)
+
+    if (lower.includes("reverse fan") || lower.includes("fan reverse"))
+      hub.toggleDirection?.("fan")
+
+    if (lower.includes("buzzer on") || lower.includes(" turn on buzzer"))
+      hub.buzzerPress?.("buzzer", true)
+
+    if (lower.includes("buzzer off") || lower.includes("turn off buzzer"))
+      hub.buzzerPress?.("buzzer", false)
+
+    if (lower.includes("relay on") || lower.includes("relay off"))
+      hub.toggleDevice?.("relay")
+
+    if (lower.includes("yellow") || lower.includes(" yellow LED"))
+      hub.toggleDevice?.("led_yellow")
+
+    if (lower.includes("white") || lower.includes("LED white"))
+      hub.toggleDevice?.("led_white")
+
+    if (lower.includes ("door"))
+      hub.toggleDevice?.("servo_door")
+
+    if (lower.includes("window"))
+      hub.toggleDevice?.("servo_window")
+
+    if (lower.includes("hub")) router.push("/(tabs)/device_hub");
+    
+    if (lower.includes("ai")) router.push("/(tabs)/ai");
+  };
+
+  const requestMicPermission = async () => {
+    if (Platform.OS === "android") {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    }
+    return true;
+  };
+
+  const startListening = async () => {
+    if (!isNativeAvailable) {
+      Alert.alert(
+        "Unavailable",
+        "Speech recognition requires a development build."
+      );
+      return;
+    }
+
+    const hasPermission = await requestMicPermission();
+    if (!hasPermission) return;
+
+    setTranscript("");
+    setIsListening(true);
+
+    await SpeechRecognition.ExpoSpeechRecognitionModule.start({
+      lang: "en-US",
+      interimResults: true,
+      continuous: false,
+    });
+  };
+
+  const stopListening = async () => {
+    if (isNativeAvailable) {
+      await SpeechRecognition.ExpoSpeechRecognitionModule.stop();
+    }
+    setIsListening(false);
+  };
+
+  return (
+    <View
+      style={{
+        position: "absolute",
+        top: 155,
+        right: 20,
+        flexDirection: "row-reverse",
+        alignItems: "center",
+        zIndex: 999,
+      }}
+    >
+      <Pressable
+        onPress={isListening ? stopListening : startListening}
+        className={`h-20 w-20 rounded-full items-center justify-center ${
+          isListening ? "bg-red-500/20" : "bg-sky-500/10"
+        }`}
+      >
+        <MaterialCommunityIcons
+          name={isListening ? "microphone-off" : "microphone"}
+          size={36}
+          color={isListening ? "#ef4444" : "#0ea5e9"}
+        />
+      </Pressable>
+
+      {(isListening || transcript) && (
+        <View className="mr-2 bg-slate-900/90 border border-slate-800 px-4 py-3 rounded-2xl max-w-[220px]">
+          {transcript ? (
+            <Text className="text-white text-sm">{transcript}</Text>
+          ) : (
+            <Text className="text-slate-400 text-sm">Listening...</Text>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
