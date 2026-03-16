@@ -1,4 +1,9 @@
-jest.mock('react-native-css-interop', () => ({}));
+jest.mock('react-native-css-interop', () => {
+  return {
+    cssInterop: () => {},
+    createInteropElement: (...args: any[]) => require('react').createElement(...args),
+  };
+});
 
 // jest.setup.ts
 

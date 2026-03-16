@@ -1,21 +1,73 @@
-import React from 'react';
-import { View, Text, Pressable, Platform } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, Pressable, Platform, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 
+// 1. Import Firebase auth
+import { auth } from '../utils/firebaseConfig'; 
+import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
+import { useGuest } from '../utils/GuestContext';
+
+const AUTH_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Request timed out. Please check your connection and try again.')), ms)
+    ),
+  ]);
+}
+
 export default function WelcomeScreen() {
   const router = useRouter();
+  const { setIsGuest } = useGuest();
+  
+  // 2. Add a loading state for the guest login
+  const [isLoadingGuest, setIsLoadingGuest] = useState(false);
+  const [isAuthChecking, setIsAuthChecking] = useState(() => Boolean(auth.currentUser));
+
+  useEffect(() => {
+    if (auth.currentUser) {
+      router.replace('/(tabs)/hub');
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        router.replace('/(tabs)/hub');
+        return;
+      }
+      setIsAuthChecking(false);
+    });
+
+    return unsubscribe;
+  }, [router]);
 
   const handleNavigation = (path: string, e?: any) => {
     if (Platform.OS === 'web' && e) {
       // @ts-ignore
       e.currentTarget.blur();
     }
-    // Explicitly pushing to the full path
     router.push(path as any);
   };
+
+  // 3. Guest login — no Firebase, just local state
+  const handleGuestLogin = () => {
+    setIsGuest(true);
+    router.replace('/(tabs)/hub');
+  };
+
+  if (isAuthChecking) {
+    return (
+      <SafeAreaView className="flex-1 bg-[#020617] items-center justify-center">
+        <StatusBar style="light" />
+        <ActivityIndicator size="large" color="#0ea5e9" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-[#020617]">
@@ -38,19 +90,27 @@ export default function WelcomeScreen() {
           {/* Sign In Button */}
           <Pressable 
             onPress={(e) => handleNavigation('/(auth)/login', e)}
+            disabled={isLoadingGuest}
             className="bg-sky-500 p-5 rounded-2xl active:bg-sky-600 shadow-lg shadow-sky-500/20"
           >
             <Text className="text-white text-center font-bold text-lg">Get Started</Text>
           </Pressable>
 
-          {/* Skip Button - points to /home now */}
+          {/* 4. Update Skip Button to trigger the Firebase Auth */}
           <Pressable 
-            onPress={(e) => handleNavigation('/(tabs)/home', e)}
+            onPress={handleGuestLogin}
+            disabled={isLoadingGuest}
             className="mt-6 py-2 active:opacity-60"
           >
             <View className="flex-row justify-center items-center">
-              <Text className="text-slate-500 font-semibold text-base">Explore as Guest </Text>
-              <MaterialCommunityIcons name="arrow-right" size={18} color="#64748b" />
+              {isLoadingGuest ? (
+                <ActivityIndicator color="#64748b" />
+              ) : (
+                <>
+                  <Text className="text-slate-500 font-semibold text-base">Explore as Guest </Text>
+                  <MaterialCommunityIcons name="arrow-right" size={18} color="#64748b" />
+                </>
+              )}
             </View>
           </Pressable>
         </View>

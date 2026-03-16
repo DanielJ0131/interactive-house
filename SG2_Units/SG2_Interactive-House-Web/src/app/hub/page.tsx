@@ -1,238 +1,379 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import TopHeader from "@/components/TopHeader";
 import { PageShell } from "@/components/pageShell";
-import { Bell, DoorOpen, Lightbulb, Square, ToggleLeft, Waves } from "@phosphor-icons/react";
 
-function ToggleRow({
-    label,
-    sub,
+import { useState, useEffect } from "react";
+
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
+
+import { db, auth } from "@/utils/firebaseConfig";
+import Link from "next/link";
+
+
+import {
+    Lightbulb,
+    Door,
+    Wind,
+    Fan,
+    PersonSimpleRun,
+    Cloud,
+    Warning,
+    Microphone,
+    ArrowsClockwise,
+} from "@phosphor-icons/react";
+import { Speech } from "lucide-react";
+
+
+function DeviceCard({
     icon,
-    value,
-    onChange,
+    title,
+    pin,
+    state,
+    onToggle,
 }: {
-    label: string;
-    sub?: string;
-    icon: ReactNode;
-    value: boolean;
-    onChange: (v: boolean) => void;
+    icon: React.ReactNode;
+    title: string;
+    pin: string;
+    state: string;
+    onToggle?: () => void;
 }) {
     return (
-        <div className="rounded-3xl bg-[#0A122B] border border-white/5 p-5 shadow-xl flex items-center justify-between">
+        <div className="rounded-3xl bg-[#0A122B] border border-white/5 p-5 flex items-center justify-between">
+
             <div className="flex items-center gap-4">
+
                 <div className="h-12 w-12 rounded-2xl bg-[#0B1636] flex items-center justify-center">
                     {icon}
                 </div>
+
                 <div>
-                    <p className="text-lg font-semibold">{label}</p>
-                    {sub ? <p className="text-white/45">{sub}</p> : null}
+                    <p className="text-lg font-semibold">{title}</p>
+                    <p className="text-white/40 text-sm">Pin {pin}</p>
                 </div>
+
             </div>
 
             <button
-                type="button"
-                onClick={() => onChange(!value)}
-                className={`h-9 w-16 rounded-full border transition ${value ? "bg-[#0EA5E9] border-[#0EA5E9]" : "bg-white/10 border-white/10"
-                    }`}
-                aria-label={`toggle ${label}`}
+                onClick={onToggle}
+                className="px-4 py-1 rounded-full bg-white/10 text-sm"
             >
-                <div
-                    className={`h-8 w-8 rounded-full bg-white transition translate-y-[2px] ${value ? "translate-x-7" : "translate-x-1"
-                        }`}
-                />
+                {state}
             </button>
+
         </div>
     );
 }
 
-function SliderCard({
+
+function SensorCard({
     title,
-    pin,
-    icon,
     value,
-    setValue,
-    badge,
+    icon,
+    alert,
 }: {
     title: string;
-    pin: string;
-    icon: ReactNode;
     value: number;
-    setValue: (v: number) => void;
-    badge?: string;
+    icon: React.ReactNode;
+    alert?: boolean;
 }) {
     return (
-        <div className="rounded-3xl bg-[#0A122B] border border-white/5 p-6 shadow-xl">
-            <div className="flex items-start justify-between">
-                <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-[#0B1636] flex items-center justify-center">
-                        {icon}
-                    </div>
-                    <div>
-                        <p className="text-lg font-semibold">{title}</p>
-                        <p className="text-white/45">{pin}</p>
-                    </div>
+        <div
+            className={`rounded-3xl border p-6 ${alert
+                ? "bg-red-900/30 border-red-500/30"
+                : "bg-[#0A122B] border-white/5"
+                }`}
+        >
+            <div className="flex items-center gap-3">
+
+                <div className="h-10 w-10 rounded-xl bg-[#0B1636] flex items-center justify-center">
+                    {icon}
                 </div>
 
-                <div className="rounded-xl bg-[#0B1636] border border-white/10 px-3 py-1 text-sm text-[#0EA5E9]">
-                    {badge ?? `${value}%`}
-                </div>
+                <p className="text-lg font-semibold">{title}</p>
+
             </div>
 
-            <input
-                className="mt-6 w-full"
-                type="range"
-                min={0}
-                max={100}
-                value={value}
-                onChange={(e) => setValue(Number(e.target.value))}
-            />
-            <div className="mt-2 flex justify-between text-xs text-white/40">
-                <span>0%</span>
-                <span>100%</span>
-            </div>
+            <p className="text-white/50 mt-2">Raw: {value}</p>
+
+            {alert && (
+                <div className="mt-3 text-xs bg-red-500/30 px-3 py-1 rounded-full inline-block">
+                    DETECTED
+                </div>
+            )}
         </div>
     );
 }
 
+
+
+function SyncCard({
+    source,
+    time,
+}: {
+    source: string;
+    time: string;
+}) {
+    return (
+        <div className="rounded-3xl bg-[#0A122B] border border-white/5 p-6">
+
+            <div className="flex items-center gap-3">
+                <ArrowsClockwise size={22} className="text-emerald-400" />
+                <p className="text-lg font-semibold">Arduino Sync</p>
+            </div>
+
+            <div className="mt-4 text-sm text-white/50">
+                LAST SOURCE
+            </div>
+
+            <div className="font-medium">
+                {source}
+            </div>
+
+            <div className="mt-4 text-sm text-white/50">
+                LAST UPDATED
+            </div>
+
+            <div className="font-medium">
+                {time}
+            </div>
+
+        </div>
+    );
+}
+
+
 export default function HubPage() {
+    const deviceRef = doc(db, "devices", "arduino");
+
+    const [username, setUsername] = useState("Home");
+
+    const [whiteLight, setWhiteLight] = useState(false);
+    const [OrangeLight, setOrangeLight] = useState(false);
     const [door, setDoor] = useState(false);
-    const [windowOpen, setWindowOpen] = useState(false);
-    const [relay, setRelay] = useState(false);
-    const [whiteLed, setWhiteLed] = useState(false);
+    const [windowState, setWindowState] = useState(false);
+    const [fanINA, setFanINA] = useState(false);
+    const [fanINB, setFanINB] = useState(false);
 
-    const [yellowLed, setYellowLed] = useState(61);
-    const [fan, setFan] = useState(0);
 
-    const gasLevel = 412;
-    const gasStatus = gasLevel > 550 ? "DANGER" : gasLevel > 350 ? "WARNING" : "SAFE";
-    const motionDetected = false;
+    const [motion, setMotion] = useState(0);
+    const [steam, setSteam] = useState(0);
+    const [gas, setGas] = useState(0);
+
+    const [syncSource, setSyncSource] = useState("arduino");
+    const [syncTime, setSyncTime] = useState("");
+
+
+
+    useEffect(() => {
+        const unsub = onAuthStateChanged(auth, (user) => {
+            if (user?.email) {
+                const name = user.email.split("@")[0];
+                setUsername(name);
+            }
+        });
+
+        return () => unsub();
+    }, []);
+
+
+    useEffect(() => {
+        const unsub = onSnapshot(deviceRef, (snap) => {
+            const data = snap.data();
+            if (!data) return;
+
+            setWhiteLight(data.white_light?.state === "on");
+            setDoor(data.door?.state === "open");
+            setWindowState(data.window?.state === "open");
+            setFanINA(data.fan_INA?.state === "on");
+            setFanINB(data.fan_INB?.state === "on");
+
+            setMotion(data.telemetry?.motion ?? 0);
+            setSteam(data.telemetry?.steam ?? 0);
+            setGas(data.telemetry?.gas ?? 0);
+
+            setSyncSource(data.sync?.lastSource ?? "arduino");
+
+            if (data.sync?.lastUpdatedAt?.seconds) {
+                const date = new Date(data.sync.lastUpdatedAt.seconds * 1000);
+                setSyncTime(date.toLocaleString());
+            }
+        });
+
+        return () => unsub();
+    }, []);
+
+    const toggleLight = async () => {
+        const newState = !whiteLight;
+        setWhiteLight(newState);
+
+        await updateDoc(deviceRef, {
+            "white_light.state": newState ? "on" : "off",
+        });
+    };
+
+    const toggleOrangeLight = async () => {
+        const newState = !OrangeLight;
+        setOrangeLight(newState);
+        await updateDoc(deviceRef, {
+            "orange_light.state": newState ? "on" : "off",
+        });
+    };
+
+    const toggleDoor = async () => {
+        const newState = !door;
+        setDoor(newState);
+
+        await updateDoc(deviceRef, {
+            "door.state": newState ? "open" : "closed",
+        });
+    };
+
+    const toggleWindow = async () => {
+        const newState = !windowState;
+        setWindowState(newState);
+
+        await updateDoc(deviceRef, {
+            "window.state": newState ? "open" : "closed",
+        });
+    };
+
+    const toggleFanINA = async () => {
+        const newState = !fanINA;
+        setFanINA(newState);
+
+        await updateDoc(deviceRef, {
+            "fan_INA.state": newState ? "on" : "off",
+        });
+    };
+
+    const toggleFanINB = async () => {
+        const newState = !fanINB;
+        setFanINB(newState);
+        await updateDoc(deviceRef, {
+            "fan_INB.state": newState ? "on" : "off",
+        });
+    };
+
 
     return (
-        <PageShell title="Device Hub" subtitle="Smart Control Interface">
-            <div className="space-y-5">
-                {(gasStatus === "DANGER" || gasStatus === "WARNING") && (
-                    <div
+        <>
+            <TopHeader />
 
-                    >
+            <PageShell
+                title={`${username}'s Home`}
+                subtitle="Live Hardware Control"
+            >
 
-                    </div>
-                )}
+                {/* ACTUATORS */}
 
-                <h2 className="text-sm tracking-[0.35em] text-[#0EA5E9] font-semibold">ACTUATORS</h2>
+                <h2 className="text-sm tracking-[0.35em] text-[#0EA5E9] font-semibold mb-4">
+                    ACTUATORS
+                </h2>
 
-                <ToggleRow
-                    label="Servo 1 (Door)"
-                    sub="D9"
-                    icon={<DoorOpen className="text-[#0EA5E9]" size={22} />}
-                    value={door}
-                    onChange={setDoor}
-                />
-                <ToggleRow
-                    label="Servo 2 (Window)"
-                    sub="D10"
-                    icon={<Square className="text-[#0EA5E9]" size={22} />}
-                    value={windowOpen}
-                    onChange={setWindowOpen}
-                />
-                <ToggleRow
-                    label="Relay Module"
-                    sub="D12"
-                    icon={<ToggleLeft className="text-[#0EA5E9]" size={22} />}
-                    value={relay}
-                    onChange={setRelay}
-                />
-                <ToggleRow
-                    label="White LED"
-                    sub="D13"
-                    icon={<Lightbulb className="text-[#0EA5E9]" size={22} />}
-                    value={whiteLed}
-                    onChange={setWhiteLed}
-                />
+                <div className="space-y-4">
 
-                <SliderCard
-                    title="Yellow LED Module"
-                    pin="D5"
-                    icon={<Lightbulb className="text-[#FACC15]" size={22} />}
-                    value={yellowLed}
-                    setValue={setYellowLed}
-                />
+                    <DeviceCard
+                        title="White Light"
+                        pin="13"
+                        icon={<Lightbulb size={22} />}
+                        state={whiteLight ? "ON" : "OFF"}
+                        onToggle={toggleLight}
+                    />
+                    <DeviceCard
+                        title="Orange Light"
+                        pin="8"
+                        icon={<Lightbulb size={22} />}
+                        state={OrangeLight ? "ON" : "OFF"}
+                        onToggle={toggleOrangeLight}
+                    />
 
-                <div className="rounded-3xl bg-[#0A122B] border border-white/5 p-6 shadow-xl">
-                    <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-2xl bg-[#0B1636] flex items-center justify-center">
-                                <Waves className="text-[#0EA5E9]" size={22} />
-                            </div>
-                            <div>
-                                <p className="text-lg font-semibold">Fan Module</p>
-                                <p className="text-white/45">D7/D6</p>
-                            </div>
-                        </div>
-                        <div className="rounded-xl bg-[#0B1636] border border-white/10 px-3 py-1 text-sm text-[#0EA5E9]">
-                            {fan}%
-                        </div>
-                    </div>
+                    <DeviceCard
+                        title="Fan INA"
+                        pin="7"
+                        icon={<Fan size={22} />}
+                        state={fanINA ? "ON" : "OFF"}
+                        onToggle={toggleFanINA}
+                    />
+                    <DeviceCard
+                        title="Fan INB"
+                        pin="6"
+                        icon={<Fan size={22} />}
+                        state={fanINB ? "ON" : "OFF"}
+                        onToggle={toggleFanINB}
+                    />
 
-                    <p className="mt-5 text-sm tracking-[0.35em] text-white/35 font-semibold">FAN DYNAMICS</p>
+                    <DeviceCard
+                        title="Door"
+                        pin="9"
+                        icon={<Door size={22} />}
+                        state={door ? "OPEN" : "CLOSED"}
+                        onToggle={toggleDoor}
+                    />
 
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                        <button
-                            type="button"
-                            onClick={() => setFan(0)}
-                            className={`rounded-2xl py-4 font-semibold border ${fan === 0
-                                ? "bg-[#0EA5E9] text-[#071022] border-[#0EA5E9]"
-                                : "bg-white/5 border-white/10 text-white/70"
-                                }`}
-                        >
-                            Off
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setFan(100)}
-                            className={`rounded-2xl py-4 font-semibold border ${fan > 0
-                                ? "bg-[#0EA5E9] text-[#071022] border-[#0EA5E9]"
-                                : "bg-white/5 border-white/10 text-white/70"
-                                }`}
-                        >
-                            On
-                        </button>
-                    </div>
+                    <DeviceCard
+                        title="Window"
+                        pin="10"
+                        icon={<Wind size={22} />}
+                        state={windowState ? "OPEN" : "CLOSED"}
+                        onToggle={toggleWindow}
+                    />
+
                 </div>
 
-                <h2 className="text-sm tracking-[0.35em] text-purple-300 font-semibold">SENSORS</h2>
+                {/* SENSORS */}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div className="rounded-3xl bg-[#0A122B] border border-white/5 p-6 shadow-xl">
-                        <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-2xl bg-[#22113A] flex items-center justify-center">
-                                <Waves className="text-purple-300" size={22} />
-                            </div>
-                            <div>
-                                <p className="text-lg font-semibold">PIR Motion Sensor</p>
-                                <p className="text-white/45">D2</p>
-                            </div>
-                        </div>
-                        <p className="mt-4 text-white/60">
-                            Status: <span className="font-semibold">{motionDetected ? "Motion Detected" : "No Motion"}</span>
-                        </p>
-                    </div>
+                <h2 className="text-sm tracking-[0.35em] text-purple-300 font-semibold mt-10 mb-4">
+                    SENSORS
+                </h2>
 
-                    <div className="rounded-3xl bg-[#0A122B] border border-white/5 p-6 shadow-xl">
-                        <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-2xl bg-[#22113A] flex items-center justify-center">
-                                <Bell className="text-purple-300" size={22} />
-                            </div>
-                            <div>
-                                <p className="text-lg font-semibold">Passive Buzzer</p>
-                                <p className="text-white/45">D3</p>
-                            </div>
-                        </div>
-                        <p className="mt-4 text-white/60">
-                            Used for alarms (gas/motion). Controlled automatically or manually.
-                        </p>
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+
+                    <SensorCard
+                        title="Motion"
+                        value={motion}
+                        icon={<PersonSimpleRun size={18} />}
+                    />
+
+                    <SensorCard
+                        title="Steam"
+                        value={steam}
+                        icon={<Cloud size={18} />}
+                    />
+
+                    <SensorCard
+                        title="Gas"
+                        value={gas}
+                        icon={<Warning size={18} />}
+                        alert={gas > 0}
+                    />
+
                 </div>
-            </div>
-        </PageShell>
+
+                {/* SYNC STATUS */}
+
+                <h2 className="text-sm tracking-[0.35em] text-emerald-300 font-semibold mt-10 mb-4">
+                    SYNC STATUS
+                </h2>
+
+                <SyncCard
+                    source={syncSource}
+                    time={syncTime}
+                />
+
+            </PageShell>
+
+            {/* Floating Mic Button */}
+
+            <Link
+                href="/voice"
+                className="fixed bottom-24 right-8 h-16 w-16 rounded-full bg-[#0EA5E9] flex items-center justify-center shadow-xl"
+            >
+                <Speech size={26} />
+            </Link>
+
+
+        </>
     );
 }

@@ -51,3 +51,15 @@ app
 ├── +html.tsx            # Web Root Template
 └── +not-found.tsx       # 404 Error Screen
 ```
+
+## Firestore Rules Deploy
+
+This project includes Firestore security rules in [firestore.rules](firestore.rules) and Firebase config in [firebase.json](firebase.json).
+
+```bash
+# Login once (if needed)
+npx firebase login
+
+# Deploy only Firestore rules to your Firebase project
+npx firebase deploy --only firestore:rules --project <your-firebase-project-id>
+```

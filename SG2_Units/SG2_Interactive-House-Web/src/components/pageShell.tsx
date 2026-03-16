@@ -1,5 +1,3 @@
-import BottomTabs from "@/components/BottomTabs";
-
 export function PageShell({
     title,
     subtitle,
@@ -12,7 +10,8 @@ export function PageShell({
     children: React.ReactNode;
 }) {
     return (
-        <div className="min-h-screen pb-24">
+        <div className="min-h-screen bg-[#070F2B] text-white">
+
             <header className="px-6 pt-8 pb-4">
                 <div className="mx-auto max-w-4xl flex items-start justify-between">
                     <div>
@@ -23,11 +22,10 @@ export function PageShell({
                 </div>
             </header>
 
-            <main className="px-6">
+            <main className="px-6 pb-10">
                 <div className="mx-auto max-w-4xl">{children}</div>
             </main>
 
-            <BottomTabs />
         </div>
     );
 }
