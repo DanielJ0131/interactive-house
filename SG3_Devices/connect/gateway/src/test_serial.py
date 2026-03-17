@@ -1,7 +1,7 @@
 from serial_client import SerialClient
 
 sc = SerialClient()
-print("F or D for fan or door, q to quit")
+print("Commands: X/Y fan, D[:1/:0] door, N[:1/:0] window, B[:1/:0] buzzer, W/O lights, q=quit")
 
 while True:
     cmd = input("> ").strip()
