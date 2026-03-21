@@ -4,7 +4,9 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-[#040714] text-white">
+    
+    <div className="min-h-screen bg-transparent text-white">
+      
       <div className="pointer-events-none fixed inset-0 opacity-60">
         <div className="absolute -top-40 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-[#0EA5E9]/10 blur-3xl" />
         <div className="absolute top-40 -left-40 h-[520px] w-[520px] rounded-full bg-[#7C3AED]/10 blur-3xl" />
@@ -16,15 +18,16 @@ export default function Home() {
         </div>
 
         <h1 className="mt-8 text-center text-4xl font-extrabold tracking-tight">
-          INTERACTIVE HOUSE
+          INTERACTIVE HOUSE by Group 4
         </h1>
         <p className="mt-3 text-center text-lg text-white/45">
-          Smart control for your modern <br /> living space.
+          Smart control for your modern <br /> House.
         </p>
 
         <div className="mt-auto space-y-4">
           <Link
             href="/auth/login"
+          
             className="block w-full rounded-2xl bg-[#12B3FF] py-4 text-center text-lg font-semibold shadow-lg shadow-[#12B3FF]/20"
           >
             Get Started

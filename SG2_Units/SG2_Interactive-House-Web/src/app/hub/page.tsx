@@ -1,17 +1,14 @@
 "use client";
 
-import TopHeader from "@/components/TopHeader";
-import { PageShell } from "@/components/pageShell";
-
 import { useState, useEffect } from "react";
-
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-
 import { db, auth } from "@/utils/firebaseConfig";
-import Link from "next/link";
 
-
+import TopHeader from "@/components/TopHeader";
+import { PageShell } from "@/components/pageShell";
 import {
     Lightbulb,
     Door,
@@ -20,11 +17,29 @@ import {
     PersonSimpleRun,
     Cloud,
     Warning,
-    Microphone,
     ArrowsClockwise,
+    MicrophoneStage,
+    CaretRight
 } from "@phosphor-icons/react";
-import { Speech } from "lucide-react";
 
+function VoiceTile() {
+    return (
+        <Link href="/voice" className="block group mb-8">
+            <div className="rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 p-5 flex items-center justify-between hover:bg-white/10 transition-all border-l-4 border-l-[#0EA5E9] shadow-xl">
+                <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-[#0EA5E9]/20 flex items-center justify-center text-[#0EA5E9] group-hover:scale-110 transition-transform">
+                        <MicrophoneStage size={28} weight="fill" />
+                    </div>
+                    <div>
+                        <p className="text-lg font-semibold text-white">Voice Control</p>
+                        <p className="text-white/40 text-[10px] tracking-[0.2em] uppercase font-bold">Open Assistant</p>
+                    </div>
+                </div>
+                <CaretRight size={20} className="text-white/20 group-hover:text-white group-hover:translate-x-1 transition-all" />
+            </div>
+        </Link>
+    );
+}
 
 function DeviceCard({
     icon,
@@ -39,123 +54,102 @@ function DeviceCard({
     state: string;
     onToggle?: () => void;
 }) {
+    const isActive = state === "ON" || state === "OPEN";
     return (
-        <div className="rounded-3xl bg-[#0A122B] border border-white/5 p-5 flex items-center justify-between">
-
+        <div className="rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 p-5 flex items-center justify-between transition-all">
             <div className="flex items-center gap-4">
-
-                <div className="h-12 w-12 rounded-2xl bg-[#0B1636] flex items-center justify-center">
+                <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center text-white">
                     {icon}
                 </div>
-
                 <div>
-                    <p className="text-lg font-semibold">{title}</p>
-                    <p className="text-white/40 text-sm">Pin {pin}</p>
+                    <p className="text-lg font-semibold text-white">{title}</p>
+                    <p className="text-white/40 text-sm font-mono">PIN {pin}</p>
                 </div>
-
             </div>
-
             <button
                 onClick={onToggle}
-                className="px-4 py-1 rounded-full bg-white/10 text-sm"
+                className={`px-6 py-2 rounded-full text-xs font-black tracking-widest transition-all ${isActive
+                        ? "bg-[#0EA5E9] text-black shadow-lg shadow-[#0EA5E9]/30 scale-105"
+                        : "bg-white/10 text-white/40 hover:bg-white/20"
+                    }`}
             >
                 {state}
             </button>
-
         </div>
     );
 }
 
-
-function SensorCard({
+function SliderCard({
     title,
-    value,
+    pin,
     icon,
-    alert,
+    value,
+    onChange,
 }: {
     title: string;
-    value: number;
+    pin: string;
     icon: React.ReactNode;
-    alert?: boolean;
+    value: number;
+    onChange: (val: number) => void;
 }) {
     return (
-        <div
-            className={`rounded-3xl border p-6 ${alert
-                ? "bg-red-900/30 border-red-500/30"
-                : "bg-[#0A122B] border-white/5"
-                }`}
-        >
-            <div className="flex items-center gap-3">
+        <div className="rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center text-[#FACC15]">
+                        {icon}
+                    </div>
+                    <div>
+                        <p className="text-lg font-semibold text-white">{title}</p>
+                        <p className="text-white/40 text-sm font-mono">PIN {pin}</p>
+                    </div>
+                </div>
+                <span className="text-[#0EA5E9] font-mono font-bold bg-[#0EA5E9]/10 px-3 py-1 rounded-lg text-xs">
+                    {Math.round((value / 255) * 100)}%
+                </span>
+            </div>
+            <input
+                type="range"
+                min="0"
+                max="255"
+                value={value}
+                onChange={(e) => onChange(parseInt(e.target.value))}
+                className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#0EA5E9]"
+            />
+        </div>
+    );
+}
 
-                <div className="h-10 w-10 rounded-xl bg-[#0B1636] flex items-center justify-center">
+function SensorCard({ title, value, icon, unit = "" }: { title: string; value: number; icon: React.ReactNode; unit?: string }) {
+    return (
+        <div className="rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 p-6">
+            <div className="flex items-center gap-3 mb-4">
+                <div className="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center text-white/70">
                     {icon}
                 </div>
-
-                <p className="text-lg font-semibold">{title}</p>
-
+                <p className="text-sm font-bold text-white/60 tracking-widest uppercase">{title}</p>
             </div>
-
-            <p className="text-white/50 mt-2">Raw: {value}</p>
-
-            {alert && (
-                <div className="mt-3 text-xs bg-red-500/30 px-3 py-1 rounded-full inline-block">
-                    DETECTED
-                </div>
-            )}
+            <p className="text-2xl font-mono text-white">{value}<span className="text-xs text-white/30 ml-1">{unit}</span></p>
         </div>
     );
 }
 
-
-
-function SyncCard({
-    source,
-    time,
-}: {
-    source: string;
-    time: string;
-}) {
-    return (
-        <div className="rounded-3xl bg-[#0A122B] border border-white/5 p-6">
-
-            <div className="flex items-center gap-3">
-                <ArrowsClockwise size={22} className="text-emerald-400" />
-                <p className="text-lg font-semibold">Arduino Sync</p>
-            </div>
-
-            <div className="mt-4 text-sm text-white/50">
-                LAST SOURCE
-            </div>
-
-            <div className="font-medium">
-                {source}
-            </div>
-
-            <div className="mt-4 text-sm text-white/50">
-                LAST UPDATED
-            </div>
-
-            <div className="font-medium">
-                {time}
-            </div>
-
-        </div>
-    );
-}
-
+/* --- MAIN PAGE --- */
 
 export default function HubPage() {
+    const router = useRouter();
     const deviceRef = doc(db, "devices", "arduino");
 
     const [username, setUsername] = useState("Home");
 
+    // States
     const [whiteLight, setWhiteLight] = useState(false);
-    const [OrangeLight, setOrangeLight] = useState(false);
     const [door, setDoor] = useState(false);
     const [windowState, setWindowState] = useState(false);
     const [fanINA, setFanINA] = useState(false);
     const [fanINB, setFanINB] = useState(false);
-
+    const [yellowLed, setYellowLed] = useState(0);
+    const [bazaar, setBazaar] = useState(false);
 
     const [motion, setMotion] = useState(0);
     const [steam, setSteam] = useState(0);
@@ -164,19 +158,14 @@ export default function HubPage() {
     const [syncSource, setSyncSource] = useState("arduino");
     const [syncTime, setSyncTime] = useState("");
 
-
-
+    // Auth & Data Listeners
     useEffect(() => {
         const unsub = onAuthStateChanged(auth, (user) => {
-            if (user?.email) {
-                const name = user.email.split("@")[0];
-                setUsername(name);
-            }
+            if (!user) router.replace("/auth/login");
+            else setUsername(user.email?.split("@")[0] || "Home");
         });
-
         return () => unsub();
-    }, []);
-
+    }, [router]);
 
     useEffect(() => {
         const unsub = onSnapshot(deviceRef, (snap) => {
@@ -188,192 +177,86 @@ export default function HubPage() {
             setWindowState(data.window?.state === "open");
             setFanINA(data.fan_INA?.state === "on");
             setFanINB(data.fan_INB?.state === "on");
+            setYellowLed(data.yellow_led?.value ?? 0);
+            setBazaar(data.bazaar?.state === "on");
 
             setMotion(data.telemetry?.motion ?? 0);
             setSteam(data.telemetry?.steam ?? 0);
             setGas(data.telemetry?.gas ?? 0);
 
             setSyncSource(data.sync?.lastSource ?? "arduino");
-
             if (data.sync?.lastUpdatedAt?.seconds) {
                 const date = new Date(data.sync.lastUpdatedAt.seconds * 1000);
                 setSyncTime(date.toLocaleString());
             }
         });
-
         return () => unsub();
     }, []);
 
-    const toggleLight = async () => {
-        const newState = !whiteLight;
-        setWhiteLight(newState);
+    // Handlers
+    const toggleLight = async () => await updateDoc(deviceRef, { "white_light.state": whiteLight ? "off" : "on" });
+    const toggleDoor = async () => await updateDoc(deviceRef, { "door.state": door ? "closed" : "open" });
+    const toggleWindow = async () => await updateDoc(deviceRef, { "window.state": windowState ? "closed" : "open" });
+    const toggleFanINA = async () => await updateDoc(deviceRef, { "fan_INA.state": fanINA ? "off" : "on" });
+    const toggleFanINB = async () => await updateDoc(deviceRef, { "fan_INB.state": fanINB ? "off" : "on" });
+    const toggleBazaar = async () => await updateDoc(deviceRef, { "bazaar.state": bazaar ? "off" : "on" });
 
-        await updateDoc(deviceRef, {
-            "white_light.state": newState ? "on" : "off",
-        });
+    const handleYellowLedChange = async (val: number) => {
+        setYellowLed(val);
+        await updateDoc(deviceRef, { "yellow_led.value": val });
     };
-
-    const toggleOrangeLight = async () => {
-        const newState = !OrangeLight;
-        setOrangeLight(newState);
-        await updateDoc(deviceRef, {
-            "orange_light.state": newState ? "on" : "off",
-        });
-    };
-
-    const toggleDoor = async () => {
-        const newState = !door;
-        setDoor(newState);
-
-        await updateDoc(deviceRef, {
-            "door.state": newState ? "open" : "closed",
-        });
-    };
-
-    const toggleWindow = async () => {
-        const newState = !windowState;
-        setWindowState(newState);
-
-        await updateDoc(deviceRef, {
-            "window.state": newState ? "open" : "closed",
-        });
-    };
-
-    const toggleFanINA = async () => {
-        const newState = !fanINA;
-        setFanINA(newState);
-
-        await updateDoc(deviceRef, {
-            "fan_INA.state": newState ? "on" : "off",
-        });
-    };
-
-    const toggleFanINB = async () => {
-        const newState = !fanINB;
-        setFanINB(newState);
-        await updateDoc(deviceRef, {
-            "fan_INB.state": newState ? "on" : "off",
-        });
-    };
-
 
     return (
-        <>
+        <main className="min-h-screen bg-transparent">
             <TopHeader />
 
-            <PageShell
-                title={`${username}'s Home`}
-                subtitle="Live Hardware Control"
-            >
+            <PageShell title={`${username}'s Hub`} subtitle="Control Center">
 
-                {/* ACTUATORS */}
+                <VoiceTile />
 
-                <h2 className="text-sm tracking-[0.35em] text-[#0EA5E9] font-semibold mb-4">
-                    ACTUATORS
+                <h2 className="text-[10px] tracking-[0.4em] text-[#0EA5E9] font-black mt-4 mb-6 uppercase opacity-80">
+                    Actuators
                 </h2>
 
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
+                    <DeviceCard title="White Light" pin="13" icon={<Lightbulb size={24} weight="fill" />} state={whiteLight ? "ON" : "OFF"} onToggle={toggleLight} />
+                    <DeviceCard title="Fan INA" pin="7" icon={<Fan size={24} weight="fill" />} state={fanINA ? "ON" : "OFF"} onToggle={toggleFanINA} />
+                    <DeviceCard title="Fan INB" pin="6" icon={<Fan size={24} weight="fill" />} state={fanINB ? "ON" : "OFF"} onToggle={toggleFanINB} />
+                    <DeviceCard title="Door" pin="9" icon={<Door size={24} weight="fill" />} state={door ? "OPEN" : "CLOSED"} onToggle={toggleDoor} />
+                    <DeviceCard title="Window" pin="10" icon={<Wind size={24} weight="fill" />} state={windowState ? "OPEN" : "CLOSED"} onToggle={toggleWindow} />
 
-                    <DeviceCard
-                        title="White Light"
-                        pin="13"
-                        icon={<Lightbulb size={22} />}
-                        state={whiteLight ? "ON" : "OFF"}
-                        onToggle={toggleLight}
-                    />
-                    <DeviceCard
-                        title="Orange Light"
-                        pin="8"
-                        icon={<Lightbulb size={22} />}
-                        state={OrangeLight ? "ON" : "OFF"}
-                        onToggle={toggleOrangeLight}
-                    />
+                    <SliderCard title="Yellow LED" pin="5" icon={<Lightbulb size={24} weight="fill" />} value={yellowLed} onChange={handleYellowLedChange} />
 
-                    <DeviceCard
-                        title="Fan INA"
-                        pin="7"
-                        icon={<Fan size={22} />}
-                        state={fanINA ? "ON" : "OFF"}
-                        onToggle={toggleFanINA}
-                    />
-                    <DeviceCard
-                        title="Fan INB"
-                        pin="6"
-                        icon={<Fan size={22} />}
-                        state={fanINB ? "ON" : "OFF"}
-                        onToggle={toggleFanINB}
-                    />
-
-                    <DeviceCard
-                        title="Door"
-                        pin="9"
-                        icon={<Door size={22} />}
-                        state={door ? "OPEN" : "CLOSED"}
-                        onToggle={toggleDoor}
-                    />
-
-                    <DeviceCard
-                        title="Window"
-                        pin="10"
-                        icon={<Wind size={22} />}
-                        state={windowState ? "OPEN" : "CLOSED"}
-                        onToggle={toggleWindow}
-                    />
-
+                    <DeviceCard title="Buzzer" pin="3" icon={<Cloud size={24} weight="fill" />} state={bazaar ? "ON" : "OFF"} onToggle={toggleBazaar} />
                 </div>
 
-                {/* SENSORS */}
-
-                <h2 className="text-sm tracking-[0.35em] text-purple-300 font-semibold mt-10 mb-4">
-                    SENSORS
+                <h2 className="text-[10px] tracking-[0.4em] text-purple-400 font-black mt-12 mb-6 uppercase opacity-80">
+                    Sensors
                 </h2>
 
                 <div className="grid grid-cols-2 gap-4">
-
-                    <SensorCard
-                        title="Motion"
-                        value={motion}
-                        icon={<PersonSimpleRun size={18} />}
-                    />
-
-                    <SensorCard
-                        title="Steam"
-                        value={steam}
-                        icon={<Cloud size={18} />}
-                    />
-
-                    <SensorCard
-                        title="Gas"
-                        value={gas}
-                        icon={<Warning size={18} />}
-                        alert={gas > 0}
-                    />
-
+                    <SensorCard title="Motion" value={motion} icon={<PersonSimpleRun size={22} />} />
+                    <SensorCard title="Steam" value={steam} icon={<Cloud size={22} />} />
+                    <SensorCard title="Gas" value={gas} icon={<Warning size={22} />} />
                 </div>
 
-                {/* SYNC STATUS */}
-
-                <h2 className="text-sm tracking-[0.35em] text-emerald-300 font-semibold mt-10 mb-4">
-                    SYNC STATUS
-                </h2>
-
-                <SyncCard
-                    source={syncSource}
-                    time={syncTime}
-                />
-
+                <div className="mt-12 rounded-3xl bg-white/5 border border-white/10 p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                        <ArrowsClockwise size={22} className="text-emerald-400" />
+                        <p className="text-sm font-bold text-white tracking-widest uppercase">System Sync</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                        <div>
+                            <p className="text-white/30 uppercase tracking-tighter">Controller</p>
+                            <p className="text-white font-mono">{syncSource}</p>
+                        </div>
+                        <div>
+                            <p className="text-white/30 uppercase tracking-tighter">Last Seen</p>
+                            <p className="text-white font-mono">{syncTime || "Never"}</p>
+                        </div>
+                    </div>
+                </div>
             </PageShell>
-
-            {/* Floating Mic Button */}
-
-            <Link
-                href="/voice"
-                className="fixed bottom-24 right-8 h-16 w-16 rounded-full bg-[#0EA5E9] flex items-center justify-center shadow-xl"
-            >
-                <Speech size={26} />
-            </Link>
-
-
-        </>
+        </main>
     );
 }

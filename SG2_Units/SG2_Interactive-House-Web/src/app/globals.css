@@ -3,67 +3,82 @@
 @tailwind utilities;
 
 :root {
-  --bg: #0b1220;
-  --text: #e5e7eb;
-  /* gray-200 */
+  --bg-color: #f52008; 
+  --text-primary: #f8fafc;
+  --glow-1: rgba(23, 143, 241, 0.45);
+  --glow-2: rgba(245, 3, 193, 0.35);
+  --glow-3: rgba(244, 240, 3, 0.25);
+  --header-bg: #0f172a;
 }
 
-html,
-body {
-  height: 100%;
-}
-
-body {
-  min-height: 100%;
+html, body {
   margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+body {
   background:
-    radial-gradient(1200px circle at 20% 20%, rgba(99, 102, 241, 0.35), transparent 45%),
-    radial-gradient(900px circle at 80% 30%, rgba(236, 72, 153, 0.25), transparent 55%),
-    radial-gradient(1100px circle at 50% 90%, rgba(34, 197, 94, 0.18), transparent 55%),
-    var(--bg);
-  color: var(--text);
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+    radial-gradient(800px circle at 15% 15%, var(--glow-1), transparent 50%),
+    radial-gradient(700px circle at 85% 30%, var(--glow-2), transparent 50%),
+    radial-gradient(900px circle at 50% 90%, var(--glow-3), transparent 50%),
+    var(--bg-color);
+  background-attachment: fixed;
 }
 
-/* Soft scrollbars */
-::-webkit-scrollbar {
-  width: 10px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.35);
-  border-radius: 999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.55);
-}
-
-/* Animations */
-@keyframes floaty {
-
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-
-  50% {
-    transform: translateY(-10px);
+@media (min-width: 2056px) {
+  main, .page-shell {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
   }
 }
 
-@keyframes glow {
-
-  0%,
-  100% {
-    opacity: 0.55;
-    transform: scale(1);
+/* On Mobile: Content fills the screen */
+@media (max-width: 640px) {
+  main, .page-shell {
+    max-width: 100%;
+    padding: 1rem;
   }
 
-  50% {
-    opacity: 0.9;
-    transform: scale(1.08);
+  /* Header Wrap Fix for Logout Button */
+  header nav {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
   }
+}
+
+/* 4. FORM & AUTOFILL FIXES */
+input:-webkit-autofill {
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: white !important;
+  box-shadow: inset 0 0 20px 20px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* 5. RANGE SLIDER (Yellow LED) */
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  background: transparent;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #0EA5E9;
+  margin-top: -7px;
+  box-shadow: 0 0 15px rgba(14, 165, 233, 0.6);
+  cursor: pointer;
 }

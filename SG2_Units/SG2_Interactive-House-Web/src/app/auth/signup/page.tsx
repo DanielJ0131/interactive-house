@@ -42,10 +42,9 @@ export default function SignupPage() {
         setLoading(true);
         try {
             const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-
-            // optional: set displayName
             await updateProfile(cred.user, { displayName: email.split("@")[0] });
 
+            document.cookie = "auth_session=true; path=/; max-age=604800; SameSite=Lax";
             router.push("/hub");
         } catch (err) {
             console.log(err);
@@ -64,7 +63,7 @@ export default function SignupPage() {
                     ← Back
                 </Link>
 
-                <div className="mt-6 rounded-3xl bg-[#0A122B] border border-white/5 p-8 shadow-2xl">
+                <div className="mt-6 rounded-3xl bg-[#0EA5E9]/20 border border-white/5 p-8 shadow-2xl">
                     <h1 className="text-3xl font-bold text-center">Create Account</h1>
                     <p className="mt-2 text-center text-white/60">
                         Register to manage your devices
@@ -78,8 +77,7 @@ export default function SignupPage() {
                                 onChange={(e) => setEmail(e.target.value)}
                                 type="email"
                                 placeholder="name@example.com"
-                                className="mt-2 w-full rounded-2xl bg-[#070B18] border border-white/10 px-4 py-4 outline-none focus:border-[#0EA5E9]"
-                            />
+                                className="mt-2 w-full rounded-2xl bg-slate-50 text-black border border-white/10 px-4 py-4 outline-none focus:border-[#0EA5E9] autofill:shadow-[inset_0_0_0px_1000px_#f8fafc]" />
                         </div>
 
                         <div>
@@ -89,8 +87,7 @@ export default function SignupPage() {
                                 onChange={(e) => setPassword(e.target.value)}
                                 type="password"
                                 placeholder="••••••••"
-                                className="mt-2 w-full rounded-2xl bg-[#070B18] border border-white/10 px-4 py-4 outline-none focus:border-[#0EA5E9]"
-                            />
+                                className="mt-2 w-full rounded-2xl bg-slate-50 text-black border border-white/10 px-4 py-4 outline-none focus:border-[#0EA5E9] autofill:shadow-[inset_0_0_0px_1000px_#f8fafc]" />
                         </div>
 
                         <div>
@@ -100,8 +97,7 @@ export default function SignupPage() {
                                 onChange={(e) => setConfirm(e.target.value)}
                                 type="password"
                                 placeholder="••••••••"
-                                className="mt-2 w-full rounded-2xl bg-[#070B18] border border-white/10 px-4 py-4 outline-none focus:border-[#0EA5E9]"
-                            />
+                                className="mt-2 w-full rounded-2xl bg-slate-50 text-black border border-white/10 px-4 py-4 outline-none focus:border-[#0EA5E9] autofill:shadow-[inset_0_0_0px_1000px_#f8fafc]" />
                         </div>
 
                         {error ? (

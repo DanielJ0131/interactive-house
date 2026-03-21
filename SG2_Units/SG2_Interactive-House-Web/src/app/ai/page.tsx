@@ -1,6 +1,10 @@
 "use client";
-import AppShell from "@/components/AppShell";
+import { PageShell } from "@/components/pageShell";
 
 export default function AIPage() {
-	return <AppShell title="AI" subtitle="AI Control">Coming soon…</AppShell>;
+    return (
+        <PageShell title="AI" subtitle="AI Control">
+            Coming soon…
+        </PageShell>
+    );
 }

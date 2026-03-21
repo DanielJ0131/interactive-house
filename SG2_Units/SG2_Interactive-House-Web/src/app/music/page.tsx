@@ -1,6 +1,10 @@
 "use client";
-import AppShell from "@/components/AppShell";
+import { PageShell } from "@/components/pageShell";
 
-export default function DatabasePage() {
-    return <AppShell title="music" subtitle="Music page">Coming soon …</AppShell>;
+export default function MusicPage() {
+    return (
+    <PageShell title="Music" subtitle="Music page">
+        Coming soon …
+        </PageShell>
+    );
 }
