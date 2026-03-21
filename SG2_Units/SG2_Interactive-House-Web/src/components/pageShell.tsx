@@ -10,7 +10,12 @@ export function PageShell({
     children: React.ReactNode;
 }) {
     return (
-        <div className="min-h-screen bg-[#070F2B] text-white">
+        <div className="min-h-screen bg-#f52008 text-white">
+                {/* background glow */}
+            <div className="pointer-events-none fixed inset-0 opacity-60">
+                <div className="absolute -top-40 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-[#0EA5E9]/10 blur-3xl" />
+                <div className="absolute top-40 -left-40 h-[520px] w-[520px] rounded-full bg-[#7C3AED]/10 blur-3xl" />
+            </div>
 
             <header className="px-6 pt-8 pb-4">
                 <div className="mx-auto max-w-4xl flex items-start justify-between">
