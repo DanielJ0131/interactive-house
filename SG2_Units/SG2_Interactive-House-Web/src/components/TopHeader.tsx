@@ -1,18 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Brain, Microphone, House, Database } from "@phosphor-icons/react";
+import { usePathname, useRouter } from "next/navigation";
+import { Brain, Microphone, House } from "@phosphor-icons/react";
+import { signOut } from "firebase/auth";
+import { auth } from "@/utils/firebaseConfig";
 
 export default function TopHeader() {
     const pathname = usePathname();
+    const router = useRouter();
 
     const nav = [
         { name: "Hub", icon: House, href: "/hub" },
         { name: "AI", icon: Brain, href: "/ai" },
         { name: "Music", icon: Microphone, href: "/music" },
-        { name: "Database", icon: Database, href: "/database" },
     ];
+
+    const handleLogout = async () => {
+        await signOut(auth);
+
+        document.cookie = "auth_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        window.location.href = "/auth/login";
+    };
 
     return (
         <header className="w-full border-b border-white/10 bg-[#070F2B]">
@@ -23,6 +32,7 @@ export default function TopHeader() {
                 </div>
 
                 <nav className="flex items-center gap-6">
+
                     {nav.map((item) => {
                         const Icon = item.icon;
                         const active = pathname === item.href;
@@ -32,7 +42,7 @@ export default function TopHeader() {
                                 key={item.name}
                                 href={item.href}
                                 className={`flex items-center gap-2 text-sm transition
-                ${active
+                                ${active
                                         ? "text-[#0EA5E9]"
                                         : "text-white/70 hover:text-[#0EA5E9]"
                                     }`}
@@ -42,6 +52,16 @@ export default function TopHeader() {
                             </Link>
                         );
                     })}
+
+                    {/*  Logout Button */}
+
+                    <button
+                        onClick={handleLogout}
+                        className="ml-4 text-sm text-red-400 hover:text-red-300"
+                    >
+                        Logout
+                    </button>
+
                 </nav>
             </div>
         </header>
