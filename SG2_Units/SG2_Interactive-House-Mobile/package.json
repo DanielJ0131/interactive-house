@@ -52,6 +52,10 @@
     "react-test-renderer": "^19.2.0",
     "typescript": "~5.9.2"
   },
+  "overrides": {
+    "markdown-it": "14.1.1",
+    "@tootallnate/once": "3.0.1"
+  },
   "jest": {
     "preset": "jest-expo",
     "setupFiles": [
