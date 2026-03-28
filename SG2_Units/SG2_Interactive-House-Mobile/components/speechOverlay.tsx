@@ -8,6 +8,7 @@ export default function SpeechOverlay() {
   const router = useRouter();
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const shouldShowTranscriptBubble = isListening || transcript.length > 0;
 
   let SpeechRecognition: any = null;
 
@@ -64,8 +65,6 @@ export default function SpeechOverlay() {
 
     if (lower.includes("window"))
       hub.toggleDevice?.("servo_window")
-
-    if (lower.includes("hub")) router.push("/(tabs)/device_hub");
     
     if (lower.includes("ai")) router.push("/(tabs)/ai");
   };
@@ -133,7 +132,7 @@ export default function SpeechOverlay() {
         />
       </Pressable>
 
-      {(isListening || transcript) && (
+      {shouldShowTranscriptBubble && (
         <View className="mr-2 bg-slate-900/90 border border-slate-800 px-4 py-3 rounded-2xl max-w-[220px]">
           {transcript ? (
             <Text className="text-white text-sm">{transcript}</Text>
