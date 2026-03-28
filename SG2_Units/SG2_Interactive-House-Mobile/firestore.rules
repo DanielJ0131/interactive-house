@@ -5,18 +5,43 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwnerByEmail(email) {
-      return isSignedIn() && request.auth.token.email == email;
+    function isOwnerUserDoc(userId) {
+      return isSignedIn()
+        && (
+          request.auth.uid == userId
+          || request.auth.token.email == userId
+        );
     }
 
-    // Shared device state for the Arduino house controller.
-    match /devices/arduino {
+    function isAdminByUserId(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId))
+        && get(/databases/$(database)/documents/users/$(userId)).data.role == 'admin';
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        isAdminByUserId(request.auth.uid)
+        || (
+          request.auth.token.email != null
+          && isAdminByUserId(request.auth.token.email)
+        )
+      );
+    }
+
+    // Shared device states for the house controller.
+    match /devices/{deviceId} {
       allow read, write: if isSignedIn();
     }
 
+    // Allow authenticated users to read melodies.
+    match /music/{melodyId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     // Keep user profile docs private to their own account.
-    match /users/{email} {
-      allow read, write: if isOwnerByEmail(email);
+    match /users/{userId} {
+      allow read, write: if isOwnerUserDoc(userId);
     }
 
     // Deny everything else by default.
