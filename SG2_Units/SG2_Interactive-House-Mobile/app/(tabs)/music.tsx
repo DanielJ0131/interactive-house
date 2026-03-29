@@ -9,6 +9,7 @@ import { useGuest } from '../../utils/GuestContext';
 import {
   initializeAudioContext,
   playInstrumentNote,
+  stopAllInstrumentNotes,
   type AudioContextType,
   type InstrumentOption,
 } from '../../utils/musicAudio';
@@ -488,15 +489,11 @@ export default function MusicScreen() {
       playbackTimeoutRef.current = null;
     }
 
-    oscillatorsRef.current.forEach((osc) => {
-      try {
-        osc.stop();
-      } catch (e) {
-        // Oscillator already stopped
-      }
+    void stopAllInstrumentNotes({
+      audioContextRef,
+      oscillatorsRef,
+      gainsRef,
     });
-    oscillatorsRef.current = [];
-    gainsRef.current = [];
     setIsPlaying(false);
   };
 
@@ -515,6 +512,9 @@ export default function MusicScreen() {
       }
 
       const audioContext = initializeAudioContext(audioContextRef);
+      if (!audioContext) {
+        throw new Error('Audio context could not be initialized.');
+      }
 
       // Resume audio context if suspended (required for web browsers)
       if (audioContext.state === 'suspended') {
@@ -557,7 +557,7 @@ export default function MusicScreen() {
             : baseNoteLength;
 
         if (frequency > 0) {
-          const noteStartTime = audioContext.currentTime;
+          const noteStartTime = 'currentTime' in audioContext ? audioContext.currentTime : 0;
           const activeInstrument = instrumentRef.current;
 
           playInstrumentNote({
