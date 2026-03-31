@@ -208,9 +208,9 @@ export default function HubPage() {
 
     return (
         <main className="min-h-screen bg-transparent">
-            <TopHeader />
+<TopHeader />
 
-            <PageShell title={`${username}'s House`} subtitle="Control Center">
+<PageShell title={`${username}'s Hub`} subtitle="Control Center">
 
                 <VoiceTile />
 
