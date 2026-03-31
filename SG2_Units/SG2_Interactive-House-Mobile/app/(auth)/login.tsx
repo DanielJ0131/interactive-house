@@ -35,23 +35,25 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   // 1. Added state for toggling password visibility
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password');
+      setLoginError('Please enter both email and password.');
       return;
     }
 
+    setLoginError(null);
     setIsLoading(true);
 
     try {
       await withTimeout(signInWithEmailAndPassword(auth, email.trim(), password), AUTH_TIMEOUT_MS);
+      setLoginError(null);
       router.replace('/(tabs)/hub');
     } catch (error: any) {
-      console.error('Login error:', error.code, error.message);
       let errorMessage = 'An unexpected error occurred.';
 
       switch (error.code) {
@@ -71,13 +73,14 @@ export default function LoginScreen() {
           errorMessage = error.message || 'Something went wrong.';
       }
 
-      Alert.alert('Login Failed', errorMessage);
+      setLoginError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleGuestLogin = () => {
+    setLoginError(null);
     setIsGuest(true);
     router.replace('/(tabs)/hub');
   };
@@ -121,7 +124,12 @@ export default function LoginScreen() {
                   placeholder="name@example.com"
                   placeholderTextColor="#475569"
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={(value) => {
+                    setEmail(value);
+                    if (loginError) {
+                      setLoginError(null);
+                    }
+                  }}
                   autoComplete="email"
                   textContentType="emailAddress"
                   importantForAutofill="yes"
@@ -141,7 +149,12 @@ export default function LoginScreen() {
                     placeholder="••••••••"
                     placeholderTextColor="#475569"
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(value) => {
+                      setPassword(value);
+                      if (loginError) {
+                        setLoginError(null);
+                      }
+                    }}
                     autoComplete="password"
                     textContentType="password"
                     importantForAutofill="yes"
@@ -166,6 +179,11 @@ export default function LoginScreen() {
 
             {/* Action Buttons */}
             <View className="mt-8">
+              {loginError && (
+                <View className="mb-4 rounded-2xl border border-red-500/40 bg-red-500/10 p-3">
+                  <Text className="text-red-300 text-sm font-medium">{loginError}</Text>
+                </View>
+              )}
               <Pressable
                 className={`p-5 rounded-2xl items-center ${isLoading ? 'bg-sky-900' : 'bg-sky-500 active:bg-sky-600 shadow-lg shadow-sky-500/20'}`}
                 onPress={handleLogin}

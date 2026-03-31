@@ -684,56 +684,56 @@ export default function MusicScreen() {
           : 'No melodies available'}
       </Text>
 
-      <View className="bg-slate-900 rounded-2xl p-4 border border-slate-800 mb-4">
-        <View className="flex-row items-center justify-between mb-2">
-          <Text className="text-white text-base font-semibold">Add Melody</Text>
+      {isAdmin && (
+        <View className="bg-slate-900 rounded-2xl p-4 border border-slate-800 mb-4">
+          <View className="flex-row items-center justify-between mb-2">
+            <Text className="text-white text-base font-semibold">Add Melody</Text>
+          </View>
+          <TextInput
+            value={newMelodyName}
+            onChangeText={setNewMelodyName}
+            editable={!isSavingMelody}
+            placeholder="Melody name"
+            placeholderTextColor="#64748b"
+            className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-white mb-2"
+          />
+          <TextInput
+            value={newMelodyArtist}
+            onChangeText={setNewMelodyArtist}
+            editable={!isSavingMelody}
+            placeholder="Artist (optional)"
+            placeholderTextColor="#64748b"
+            className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-white mb-2"
+          />
+          <TextInput
+            value={newMelodyFrequencies}
+            onChangeText={setNewMelodyFrequencies}
+            editable={!isSavingMelody}
+            placeholder="Frequencies (0 for silent), e.g. 262, 294, 0, 330"
+            placeholderTextColor="#64748b"
+            className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-white mb-3"
+          />
+          <TextInput
+            value={newMelodyDelays}
+            onChangeText={setNewMelodyDelays}
+            editable={!isSavingMelody}
+            placeholder="Arduino delays (ms), e.g. 500, 500, 250, 750"
+            placeholderTextColor="#64748b"
+            className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-white mb-3"
+          />
+          <Pressable
+            onPress={handleAddMelody}
+            disabled={isSavingMelody}
+            className={`rounded-xl py-3 items-center ${isSavingMelody ? 'bg-slate-700' : 'bg-emerald-500'}`}
+          >
+            {isSavingMelody ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text className="font-semibold text-white">Save Melody</Text>
+            )}
+          </Pressable>
         </View>
-        <TextInput
-          value={newMelodyName}
-          onChangeText={setNewMelodyName}
-          editable={isAdmin && !isSavingMelody}
-          placeholder="Melody name"
-          placeholderTextColor="#64748b"
-          className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-white mb-2"
-        />
-        <TextInput
-          value={newMelodyArtist}
-          onChangeText={setNewMelodyArtist}
-          editable={isAdmin && !isSavingMelody}
-          placeholder="Artist (optional)"
-          placeholderTextColor="#64748b"
-          className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-white mb-2"
-        />
-        <TextInput
-          value={newMelodyFrequencies}
-          onChangeText={setNewMelodyFrequencies}
-          editable={isAdmin && !isSavingMelody}
-          placeholder="Frequencies (0 for silent), e.g. 262, 294, 0, 330"
-          placeholderTextColor="#64748b"
-          className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-white mb-3"
-        />
-        <TextInput
-          value={newMelodyDelays}
-          onChangeText={setNewMelodyDelays}
-          editable={isAdmin && !isSavingMelody}
-          placeholder="Arduino delays (ms), e.g. 500, 500, 250, 750"
-          placeholderTextColor="#64748b"
-          className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-white mb-3"
-        />
-        <Pressable
-          onPress={handleAddMelody}
-          disabled={!isAdmin || isSavingMelody}
-          className={`rounded-xl py-3 items-center ${!isAdmin || isSavingMelody ? 'bg-slate-700' : 'bg-emerald-500'}`}
-        >
-          {isSavingMelody ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <Text className={`font-semibold ${!isAdmin ? 'text-slate-400' : 'text-white'}`}>
-              Save Melody
-            </Text>
-          )}
-        </Pressable>
-      </View>
+      )}
 
       {melodies.length > 0 && (
         <>
