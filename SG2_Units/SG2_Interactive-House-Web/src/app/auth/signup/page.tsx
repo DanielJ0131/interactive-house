@@ -7,6 +7,8 @@ import { auth } from "@/utils/firebaseConfig";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 
+import { db } from "@/utils/firebaseConfig"; // Make sure db is exported from your config
+import { doc, setDoc } from "firebase/firestore";
 function mapFirebaseAuthError(code?: string) {
     switch (code) {
         case "auth/fullname-required":
@@ -43,8 +45,19 @@ export default function SignupPage() {
 
         setLoading(true);
         try {
+            
             const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-            await updateProfile(cred.user, { displayName: email.split("@")[0] });
+
+            
+            await updateProfile(cred.user, { displayName: fullname.trim() });
+
+            
+            await setDoc(doc(db, "users", cred.user.email!), {
+                
+                name: fullname.trim(),
+                createdAt: new Date().toISOString(),
+                role: "user" // Optional: useful for permissions later
+            });
 
             document.cookie = "auth_session=true; path=/; max-age=604800; SameSite=Lax";
             router.push("/hub");
@@ -78,7 +91,7 @@ export default function SignupPage() {
                                 value={fullname}
                                 onChange={(e) => setFullname(e.target.value)}
                                 type="text"
-                                placeholder="e.g. Pelle Poluha"
+                                placeholder="First and Last Name"
                                 className="mt-2 w-full rounded-2xl bg-slate-50 text-black border border-white/10 px-4 py-4 outline-none focus:border-[#0EA5E9] autofill:shadow-[inset_0_0_0px_1000px_#f8fafc]" />
                         </div>
 
