@@ -13,6 +13,7 @@ import {
 import { Link, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAppTheme } from '../../utils/AppThemeContext';
 
 // Firebase Imports
 import { auth, db } from '../../utils/firebaseConfig';
@@ -34,6 +35,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 
 export default function SignupScreen() {
   const router = useRouter();
+  const { theme } = useAppTheme();
   const [name, setName] = useState('');
   const [email, setEmail] = useState(''); 
   const [password, setPassword] = useState('');
@@ -151,7 +153,7 @@ export default function SignupScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: '#020617' }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -165,28 +167,28 @@ export default function SignupScreen() {
                 onPress={() => router.replace('/')} 
                 className="flex-row items-center p-2 active:opacity-60"
               >
-                <MaterialCommunityIcons name="chevron-left" size={28} color="#0ea5e9" />
-                <Text className="text-sky-500 font-bold text-lg">Back</Text>
+                <MaterialCommunityIcons name="chevron-left" size={28} color={theme.colors.accent} />
+                <Text style={{ color: theme.colors.accent }} className="font-bold text-lg">Back</Text>
               </Pressable>
             </View>
 
             <View className="mt-8">
-              <Text className="text-white text-4xl font-bold mb-2">Create Account</Text>
-              <Text className="text-slate-500 mb-8">Start your Interactive House journey today.</Text>
+              <Text style={{ color: theme.colors.text }} className="text-4xl font-bold mb-2">Create Account</Text>
+              <Text style={{ color: theme.colors.mutedText }} className="mb-8">Start your Interactive House journey today.</Text>
             </View>
 
             <View className="space-y-4">
               {errors.general && (
-                <Text className="text-red-400 mb-3 ml-1 font-medium">{errors.general}</Text>
+                <Text style={{ color: theme.colors.danger }} className="mb-3 ml-1 font-medium">{errors.general}</Text>
               )}
 
-              <Text className="text-slate-400 mb-1 ml-1 font-medium">Full Name</Text>
+              <Text style={{ color: theme.colors.text }} className="mb-1 ml-1 font-medium">Full Name</Text>
               {errors.name && (
-                <Text className="text-red-400 mb-2 ml-1 text-xs font-medium">{errors.name}</Text>
+                <Text style={{ color: theme.colors.danger }} className="mb-2 ml-1 text-xs font-medium">{errors.name}</Text>
               )}
               <TextInput
                 placeholder="Name Example"
-                placeholderTextColor="#475569"
+                placeholderTextColor={theme.colors.subtleText}
                 value={name}
                 onChangeText={(value) => {
                   setName(value);
@@ -194,16 +196,17 @@ export default function SignupScreen() {
                     setErrors((prev) => ({ ...prev, name: undefined, general: undefined }));
                   }
                 }}
-                className="bg-slate-900 border border-slate-800 text-white p-4 rounded-2xl mb-4"
+                style={{ backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border, color: theme.colors.text }}
+                className="border p-4 rounded-2xl mb-4"
               />
 
-              <Text className="text-slate-400 mb-1 ml-1 font-medium">Email Address</Text>
+              <Text style={{ color: theme.colors.text }} className="mb-1 ml-1 font-medium">Email Address</Text>
               {errors.email && (
-                <Text className="text-red-400 mb-2 ml-1 text-xs font-medium">{errors.email}</Text>
+                <Text style={{ color: theme.colors.danger }} className="mb-2 ml-1 text-xs font-medium">{errors.email}</Text>
               )}
               <TextInput
                 placeholder="name@example.com"
-                placeholderTextColor="#475569"
+                placeholderTextColor={theme.colors.subtleText}
                 value={email}
                 onChangeText={(value) => {
                   setEmail(value);
@@ -213,16 +216,17 @@ export default function SignupScreen() {
                 }}
                 keyboardType="email-address"
                 autoCapitalize="none"
-                className="bg-slate-900 border border-slate-800 text-white p-4 rounded-2xl mb-4"
+                style={{ backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border, color: theme.colors.text }}
+                className="border p-4 rounded-2xl mb-4"
               />
 
-              <Text className="text-slate-400 mb-1 ml-1 font-medium">Password</Text>
+              <Text style={{ color: theme.colors.text }} className="mb-1 ml-1 font-medium">Password</Text>
               {errors.password && (
-                <Text className="text-red-400 mb-2 ml-1 text-xs font-medium">{errors.password}</Text>
+                <Text style={{ color: theme.colors.danger }} className="mb-2 ml-1 text-xs font-medium">{errors.password}</Text>
               )}
               <TextInput
                 placeholder="••••••••"
-                placeholderTextColor="#475569"
+                placeholderTextColor={theme.colors.subtleText}
                 value={password}
                 onChangeText={(value) => {
                   setPassword(value);
@@ -235,17 +239,18 @@ export default function SignupScreen() {
                     }));
                   }
                 }}
-                className="bg-slate-900 border border-slate-800 text-white p-4 rounded-2xl mb-4"
+                style={{ backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border, color: theme.colors.text }}
+                className="border p-4 rounded-2xl mb-4"
                 secureTextEntry
               />
 
-              <Text className="text-slate-400 mb-1 ml-1 font-medium">Confirm Password</Text>
+              <Text style={{ color: theme.colors.text }} className="mb-1 ml-1 font-medium">Confirm Password</Text>
               {errors.confirmPassword && (
-                <Text className="text-red-400 mb-2 ml-1 text-xs font-medium">{errors.confirmPassword}</Text>
+                <Text style={{ color: theme.colors.danger }} className="mb-2 ml-1 text-xs font-medium">{errors.confirmPassword}</Text>
               )}
               <TextInput
                 placeholder="••••••••"
-                placeholderTextColor="#475569"
+                placeholderTextColor={theme.colors.subtleText}
                 value={confirmPassword}
                 onChangeText={(value) => {
                   setConfirmPassword(value);
@@ -253,28 +258,30 @@ export default function SignupScreen() {
                     setErrors((prev) => ({ ...prev, confirmPassword: undefined, general: undefined }));
                   }
                 }}
-                className="bg-slate-900 border border-slate-800 text-white p-4 rounded-2xl mb-4"
+                style={{ backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border, color: theme.colors.text }}
+                className="border p-4 rounded-2xl mb-4"
                 secureTextEntry
               />
 
               <Pressable
                 onPress={handleSignup}
                 disabled={isSubmitting}
-                className={`p-5 rounded-2xl shadow-lg mt-4 ${isSubmitting ? 'bg-sky-900' : 'bg-sky-500 active:bg-sky-600 shadow-sky-500/20'}`}
+                style={{ backgroundColor: isSubmitting ? theme.colors.surfaceStrong : theme.colors.accent }}
+                className="p-5 rounded-2xl mt-4"
               >
                 {isSubmitting ? (
-                  <ActivityIndicator color="white" />
+                  <ActivityIndicator color={theme.colors.accentText} />
                 ) : (
-                  <Text className="text-white text-center font-bold text-lg">Create Account</Text>
+                  <Text style={{ color: theme.colors.accentText }} className="text-center font-bold text-lg">Create Account</Text>
                 )}
               </Pressable>
             </View>
 
             <View className="flex-row justify-center mt-10">
-              <Text className="text-slate-500">Already have an account? </Text>
+              <Text style={{ color: theme.colors.mutedText }}>Already have an account? </Text>
               <Link href="/login" asChild>
                 <Pressable>
-                  <Text className="text-sky-400 font-bold">Sign In</Text>
+                  <Text style={{ color: theme.colors.accent }} className="font-bold">Sign In</Text>
                 </Pressable>
               </Link>
             </View>

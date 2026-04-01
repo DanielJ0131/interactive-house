@@ -7,6 +7,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { onSnapshotsInSync } from 'firebase/firestore';
 import { db, auth } from '../../utils/firebaseConfig';
 import { useGuest } from '../../utils/GuestContext';
+import { useAppTheme } from '../../utils/AppThemeContext';
 import SpeechOverlay from "../../components/speechOverlay";
 import EmergencyHeaderButton from "../../components/EmergencyHeaderButton";
 
@@ -17,6 +18,7 @@ cssInterop(MaterialCommunityIcons, {
 export default function TabLayout() {
   const router = useRouter();
   const { isGuest, setIsGuest } = useGuest();
+  const { theme } = useAppTheme();
   const [isConnected, setIsConnected] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
@@ -94,16 +96,16 @@ export default function TabLayout() {
       <Tabs
         initialRouteName="hub"
         screenOptions={{
-          tabBarActiveTintColor: '#0ea5e9',
-          tabBarInactiveTintColor: '#64748b',
+          tabBarActiveTintColor: theme.colors.accent,
+          tabBarInactiveTintColor: theme.colors.mutedText,
           tabBarShowLabel: true,
           headerStyle: {
-            backgroundColor: '#020617',
+            backgroundColor: theme.colors.background,
             borderBottomWidth: 1,
-            borderBottomColor: '#1e293b',
+            borderBottomColor: theme.colors.border,
           },
           headerShadowVisible: false,
-          headerTintColor: '#fff',
+          headerTintColor: theme.colors.text,
           headerTitleStyle: {
             fontWeight: 'bold',
             fontSize: 18,
@@ -120,7 +122,7 @@ export default function TabLayout() {
                 <MaterialCommunityIcons
                   name="logout"
                   size={22}
-                  color="#ef4444"
+                  color={theme.colors.danger}
                 />
               </Pressable>
 
@@ -130,7 +132,7 @@ export default function TabLayout() {
                     <MaterialCommunityIcons
                       name={isLoggedIn ? 'shield-check' : 'shield-alert-outline'}
                       size={26}
-                      color={isLoggedIn ? '#22c55e' : '#ef4444'}
+                      color={isLoggedIn ? theme.colors.success : theme.colors.danger}
                       className={pressed ? 'opacity-60' : 'opacity-100'}
                     />
                   )}
@@ -139,8 +141,8 @@ export default function TabLayout() {
             </View>
           ),
           tabBarStyle: {
-            backgroundColor: '#020617',
-            borderTopColor: '#1e293b',
+            backgroundColor: theme.colors.background,
+            borderTopColor: theme.colors.border,
             height: Platform.OS === 'ios' ? 88 : 75,
             paddingTop: 8,
             paddingBottom: Platform.OS === 'ios' ? 30 : 12,

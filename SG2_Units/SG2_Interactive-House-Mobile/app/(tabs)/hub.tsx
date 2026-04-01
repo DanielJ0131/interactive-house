@@ -16,6 +16,7 @@ import Slider from '@react-native-community/slider';
 import { onSnapshot, updateDoc } from 'firebase/firestore';
 import { db, auth } from '../../utils/firebaseConfig';
 import { ARDUINO_DOC_ID, getArduinoDevicesDocRef } from '../../utils/firestorePaths';
+import { useAppTheme } from '../../utils/AppThemeContext';
 
 type DeviceState = 'on' | 'off' | 'open' | 'closed';
 
@@ -169,6 +170,7 @@ const AnimatedFanIcon = memo(
 );
 
 export default function DatabaseScreen() {
+  const { theme } = useAppTheme();
   const [deviceData, setDeviceData] = useState<DevicesDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -307,9 +309,9 @@ export default function DatabaseScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: '#020617' }}>
+      <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: theme.colors.background }}>
         <View style={{ flex: 1, justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#0ea5e9" />
+          <ActivityIndicator size="large" color={theme.colors.accent} />
         </View>
       </SafeAreaView>
     );
@@ -318,22 +320,22 @@ export default function DatabaseScreen() {
   const lastUpdatedAt = formatTimestamp(deviceData?.sync?.lastUpdatedAt);
 
   return (
-    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: '#020617' }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <ScrollView contentContainerStyle={{ padding: 24 }} showsVerticalScrollIndicator={false}>
         <View className="mb-8 mt-4">
-          <Text className="text-white text-4xl font-extrabold tracking-tight">
+          <Text style={{ color: theme.colors.text }} className="text-4xl font-extrabold tracking-tight">
             {user?.displayName ? `${user.displayName}'s Home` : 'Database'}
           </Text>
-          <Text className="text-slate-500 text-lg font-medium">Live Hardware Control</Text>
+          <Text style={{ color: theme.colors.mutedText }} className="text-lg font-medium">Live Hardware Control</Text>
         </View>
 
         {error && (
-          <View className="bg-red-500/10 border border-red-500/30 p-4 rounded-3xl mb-6">
-            <Text className="text-red-400 font-medium">{error}</Text>
+          <View style={{ backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger }} className="border p-4 rounded-3xl mb-6">
+            <Text style={{ color: theme.colors.danger }} className="font-medium">{error}</Text>
           </View>
         )}
 
-        <Text className="text-sky-500 text-xs font-black uppercase tracking-[2px] mb-4 ml-2">
+        <Text style={{ color: theme.colors.accent }} className="text-xs font-black uppercase tracking-[2px] mb-4 ml-2">
           Actuators
         </Text>
 
@@ -377,7 +379,7 @@ export default function DatabaseScreen() {
 
         {deviceData?.telemetry && (
           <>
-            <Text className="text-purple-500 text-xs font-black uppercase tracking-[2px] mt-8 mb-4 ml-2">
+            <Text style={{ color: theme.colors.secondaryAccent }} className="text-xs font-black uppercase tracking-[2px] mt-8 mb-4 ml-2">
               Sensors
             </Text>
 
@@ -398,18 +400,18 @@ export default function DatabaseScreen() {
 
         {deviceData?.sync && (
           <>
-            <Text className="text-emerald-500 text-xs font-black uppercase tracking-[2px] mt-8 mb-4 ml-2">
+            <Text style={{ color: theme.colors.success }} className="text-xs font-black uppercase tracking-[2px] mt-8 mb-4 ml-2">
               Sync Status
             </Text>
 
-            <View className="bg-slate-900/40 border border-slate-800/60 p-5 rounded-3xl mb-4">
+            <View style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }} className="border p-5 rounded-3xl mb-4">
               <View className="flex-row items-center mb-4">
-                <View className="h-12 w-12 rounded-2xl bg-emerald-500/10 items-center justify-center mr-4">
-                  <MaterialCommunityIcons name="sync" size={24} color="#10b981" />
+                <View style={{ backgroundColor: theme.colors.successSoft }} className="h-12 w-12 rounded-2xl items-center justify-center mr-4">
+                  <MaterialCommunityIcons name="sync" size={24} color={theme.colors.success} />
                 </View>
                 <View>
-                  <Text className="text-white text-lg font-bold">Arduino Sync</Text>
-                  <Text className="text-slate-500 text-xs font-mono">{ARDUINO_DOC_ID}</Text>
+                  <Text style={{ color: theme.colors.text }} className="text-lg font-bold">Arduino Sync</Text>
+                  <Text style={{ color: theme.colors.mutedText }} className="text-xs font-mono">{ARDUINO_DOC_ID}</Text>
                 </View>
               </View>
 
@@ -419,14 +421,14 @@ export default function DatabaseScreen() {
           </>
         )}
 
-        <Text className="text-slate-400 text-xs font-black uppercase tracking-[2px] mt-8 mb-4 ml-2">
+        <Text style={{ color: theme.colors.subtleText }} className="text-xs font-black uppercase tracking-[2px] mt-8 mb-4 ml-2">
           Database Debug
         </Text>
 
-        <View className="bg-slate-900/40 border border-slate-800/60 p-5 rounded-3xl mb-8">
+        <View style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }} className="border p-5 rounded-3xl mb-8">
           <Text
             style={{
-              color: '#4ade80',
+              color: theme.colors.success,
               fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
               fontSize: 11,
             }}
@@ -448,34 +450,32 @@ function YellowLedCard({
   onChange: (value: number) => void;
   onSlidingComplete: (value: number) => void;
 }) {
+  const { theme } = useAppTheme();
   const levelLabel = `${Math.round(percent)}%`;
   const iconOpacity = 0.2 + (Math.max(0, Math.min(100, percent)) / 100) * 0.8;
 
   return (
     <View
       style={{
-        borderColor: 'rgba(250, 204, 21, 0.35)',
-        backgroundColor: 'rgba(250, 204, 21, 0.06)',
+        borderColor: theme.colors.warning,
+        backgroundColor: theme.colors.accentSoft,
       }}
       className="border p-5 rounded-3xl mb-3"
     >
       <View className="flex-row justify-between items-center mb-4">
         <View className="flex-row items-center flex-1">
-          <View
-            style={{ opacity: iconOpacity }}
-            className="h-14 w-14 rounded-2xl items-center justify-center mr-4 bg-amber-500/15"
-          >
-            <MaterialCommunityIcons name="lightbulb-on-outline" size={26} color="#facc15" />
+          <View style={{ opacity: iconOpacity, backgroundColor: theme.colors.warningSoft }} className="h-14 w-14 rounded-2xl items-center justify-center mr-4">
+            <MaterialCommunityIcons name="lightbulb-on-outline" size={26} color={theme.colors.warning} />
           </View>
 
           <View className="flex-1">
-            <Text className="text-white text-lg font-bold">Yellow LED</Text>
-            <Text className="text-slate-400 text-xs font-medium mt-1">Brightness</Text>
+            <Text style={{ color: theme.colors.text }} className="text-lg font-bold">Yellow LED</Text>
+            <Text style={{ color: theme.colors.mutedText }} className="text-xs font-medium mt-1">Brightness</Text>
           </View>
         </View>
 
-        <View className="px-3 py-2 rounded-2xl border bg-amber-500/20 border-amber-500/50">
-          <Text className="text-[10px] font-black uppercase tracking-widest text-amber-200">
+        <View style={{ backgroundColor: theme.colors.warningSoft, borderColor: theme.colors.warning }} className="px-3 py-2 rounded-2xl border">
+          <Text style={{ color: theme.colors.warning }} className="text-[10px] font-black uppercase tracking-widest">
             {levelLabel}
           </Text>
         </View>
@@ -486,9 +486,9 @@ function YellowLedCard({
         minimumValue={0}
         maximumValue={100}
         step={1}
-        minimumTrackTintColor="#facc15"
-        maximumTrackTintColor="#334155"
-        thumbTintColor="#facc15"
+        minimumTrackTintColor={theme.colors.warning}
+        maximumTrackTintColor={theme.colors.borderStrong}
+        thumbTintColor={theme.colors.warning}
         onValueChange={onChange}
         onSlidingComplete={onSlidingComplete}
       />
@@ -504,10 +504,11 @@ function formatTimestamp(timestamp?: { seconds?: number; nanoseconds?: number })
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
+  const { theme } = useAppTheme();
   return (
     <View className="mb-3">
-      <Text className="text-slate-500 text-xs font-black uppercase tracking-widest">{label}</Text>
-      <Text className="text-white text-base font-semibold mt-1">{value}</Text>
+      <Text style={{ color: theme.colors.subtleText }} className="text-xs font-black uppercase tracking-widest">{label}</Text>
+      <Text style={{ color: theme.colors.text }} className="text-base font-semibold mt-1">{value}</Text>
     </View>
   );
 }
@@ -525,44 +526,42 @@ function TelemetryCard({
   activeText: string;
   inactiveText: string;
 }) {
+  const { theme } = useAppTheme();
   const isActive = value > 2;
 
   return (
     <View
-      style={{ flexBasis: '48%' }}
-      className={`p-5 rounded-3xl mb-4 border ${
-        isActive
-          ? 'bg-red-500/10 border-red-500/30'
-          : 'bg-slate-900/40 border-slate-800/60'
-      }`}
+      style={{
+        flexBasis: '48%',
+        backgroundColor: isActive ? theme.colors.dangerSoft : theme.colors.surface,
+        borderColor: isActive ? theme.colors.danger : theme.colors.border,
+      }}
+      className="p-5 rounded-3xl mb-4 border"
     >
       <View
-        className={`h-10 w-10 rounded-xl items-center justify-center mb-3 ${
-          isActive ? 'bg-red-500/10' : 'bg-purple-500/10'
-        }`}
+        style={{ backgroundColor: isActive ? theme.colors.dangerSoft : theme.colors.secondaryAccentSoft }}
+        className="h-10 w-10 rounded-xl items-center justify-center mb-3"
       >
         <MaterialCommunityIcons
           name={icon}
           size={20}
-          color={isActive ? '#f87171' : '#a855f7'}
+          color={isActive ? theme.colors.danger : theme.colors.secondaryAccent}
         />
       </View>
 
-      <Text className="text-white font-bold" numberOfLines={1}>
+      <Text style={{ color: theme.colors.text }} className="font-bold" numberOfLines={1}>
         {label}
       </Text>
-      <Text className="text-slate-500 text-xs font-mono mt-1">Raw: {value}</Text>
+      <Text style={{ color: theme.colors.mutedText }} className="text-xs font-mono mt-1">Raw: {value}</Text>
 
       <View
-        className={`self-start mt-3 px-3 py-1.5 rounded-full border ${
-          isActive
-            ? 'bg-red-500/20 border-red-500/40'
-            : 'bg-slate-800 border-slate-700'
-        }`}
+        style={{
+          backgroundColor: isActive ? theme.colors.dangerSoft : theme.colors.chipBackground,
+          borderColor: isActive ? theme.colors.danger : theme.colors.border,
+        }}
+        className="self-start mt-3 px-3 py-1.5 rounded-full border"
       >
-        <Text className={`text-[10px] font-black uppercase tracking-widest ${
-          isActive ? 'text-red-300' : 'text-slate-400'
-        }`}>
+        <Text style={{ color: isActive ? theme.colors.danger : theme.colors.mutedText }} className="text-[10px] font-black uppercase tracking-widest">
           {isActive ? activeText : inactiveText}
         </Text>
       </View>
@@ -589,6 +588,7 @@ function DeviceCard({
   reverseSpin?: boolean;
   disabled?: boolean;
 }) {
+  const { theme } = useAppTheme();
   const isActive =
     data.state === 'on' ||
     data.state === 'open' ||
@@ -601,8 +601,8 @@ function DeviceCard({
     <Pressable
       onPress={isDisabled ? undefined : onToggle}
       style={{
-        borderColor: isActive ? 'rgba(14, 165, 233, 0.35)' : '#1e293b',
-        backgroundColor: isActive ? 'rgba(14, 165, 233, 0.05)' : 'rgba(15, 23, 42, 0.4)',
+        borderColor: isActive ? theme.colors.accent : theme.colors.border,
+        backgroundColor: isActive ? theme.colors.accentSoft : theme.colors.surface,
         opacity: isDisabled ? 0.8 : 1,
       }}
       className="border p-5 rounded-3xl mb-3"
@@ -610,29 +610,28 @@ function DeviceCard({
       <View className="flex-row justify-between items-center">
         <View className="flex-row items-center flex-1">
           <View
-            className={`h-14 w-14 rounded-2xl items-center justify-center mr-4 ${
-              isActive ? 'bg-sky-500/10' : 'bg-slate-800/40'
-            }`}
+            style={{ backgroundColor: isActive ? theme.colors.accentSoft : theme.colors.secondaryAccentSoft }}
+            className="h-14 w-14 rounded-2xl items-center justify-center mr-4"
           >
             {isFan ? (
               <AnimatedFanIcon
                 speed={isActive ? 100 : 0}
                 direction={reverseSpin}
-                color={isActive ? '#38bdf8' : '#475569'}
+                color={isActive ? theme.colors.accent : theme.colors.subtleText}
               />
             ) : (
               <MaterialCommunityIcons
                 name={icon}
                 size={26}
-                color={isActive ? '#38bdf8' : '#475569'}
+                color={isActive ? theme.colors.accent : theme.colors.subtleText}
               />
             )}
           </View>
 
           <View className="flex-1">
-            <Text className="text-white text-lg font-bold">{name}</Text>
+            <Text style={{ color: theme.colors.text }} className="text-lg font-bold">{name}</Text>
             {disabled && (
-              <Text className="text-amber-400 text-[10px] font-black uppercase tracking-widest mt-2">
+              <Text style={{ color: theme.colors.warning }} className="text-[10px] font-black uppercase tracking-widest mt-2">
                 Read Only
               </Text>
             )}
@@ -640,37 +639,29 @@ function DeviceCard({
         </View>
 
         <View
-          className={`px-3 py-2 rounded-2xl border ${
-            isActive
-              ? 'bg-sky-500/20 border-sky-500/50'
-              : 'bg-slate-800 border-slate-700'
-          }`}
+          style={{
+            backgroundColor: isActive ? theme.colors.accentSoft : theme.colors.chipBackground,
+            borderColor: isActive ? theme.colors.accent : theme.colors.border,
+          }}
+          className="px-3 py-2 rounded-2xl border"
         >
-          <Text
-            className={`text-[10px] font-black uppercase tracking-widest ${
-              isActive ? 'text-sky-300' : 'text-slate-400'
-            }`}
-          >
+          <Text style={{ color: isActive ? theme.colors.accentText : theme.colors.mutedText }} className="text-[10px] font-black uppercase tracking-widest">
             {data.state}
           </Text>
         </View>
       </View>
 
       {onReverse && (
-        <View className="mt-4 pt-4 border-t border-slate-800/70">
+        <View style={{ borderTopColor: theme.colors.border }} className="mt-4 pt-4 border-t">
           <Pressable
             onPress={reversing ? undefined : onReverse}
-            className={`self-start px-4 py-2 rounded-xl border ${
-              reversing
-                ? 'bg-slate-800 border-slate-700'
-                : 'bg-amber-500/10 border-amber-500/40 active:bg-amber-500/20'
-            }`}
+            style={{
+              backgroundColor: reversing ? theme.colors.chipBackground : theme.colors.warningSoft,
+              borderColor: reversing ? theme.colors.border : theme.colors.warning,
+            }}
+            className="self-start px-4 py-2 rounded-xl border"
           >
-            <Text
-              className={`text-[10px] font-black uppercase tracking-widest ${
-                reversing ? 'text-slate-400' : 'text-amber-300'
-              }`}
-            >
+            <Text style={{ color: reversing ? theme.colors.mutedText : theme.colors.warning }} className="text-[10px] font-black uppercase tracking-widest">
               {reversing ? 'Reversing...' : 'Reverse'}
             </Text>
           </Pressable>

@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
+import { useAppTheme } from '../utils/AppThemeContext';
 
 // 1. Import Firebase auth
 import { auth } from '../utils/firebaseConfig'; 
@@ -24,6 +25,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 export default function WelcomeScreen() {
   const router = useRouter();
   const { setIsGuest } = useGuest();
+  const { theme } = useAppTheme();
   
   // 2. Add a loading state for the guest login
   const [isLoadingGuest, setIsLoadingGuest] = useState(false);
@@ -62,26 +64,26 @@ export default function WelcomeScreen() {
 
   if (isAuthChecking) {
     return (
-      <SafeAreaView className="flex-1 bg-[#020617] items-center justify-center">
-        <StatusBar style="light" />
-        <ActivityIndicator size="large" color="#0ea5e9" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} className="items-center justify-center">
+        <StatusBar style="light" backgroundColor={theme.colors.background} />
+        <ActivityIndicator size="large" color={theme.colors.accent} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-[#020617]">
-      <StatusBar style="light" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <StatusBar style="light" backgroundColor={theme.colors.background} />
       
       <View className="flex-1 px-8 justify-between py-12">
         <View className="items-center mt-10">
-          <View className="bg-sky-500/10 p-5 rounded-[32px] mb-6">
-             <MaterialCommunityIcons name="home-assistant" size={64} color="#0ea5e9" />
+          <View style={{ backgroundColor: theme.colors.accentSoft }} className="p-5 rounded-[32px] mb-6">
+             <MaterialCommunityIcons name="home-assistant" size={64} color={theme.colors.accent} />
           </View>
-          <Text className="text-white text-4xl font-black tracking-tight text-center uppercase">
+          <Text style={{ color: theme.colors.text }} className="text-4xl font-black tracking-tight text-center uppercase">
             Interactive House
           </Text>
-          <Text className="text-slate-400 text-lg text-center mt-4 leading-6">
+          <Text style={{ color: theme.colors.mutedText }} className="text-lg text-center mt-4 leading-6">
             Smart control for your modern{"\n"}living space.
           </Text>
         </View>
@@ -91,9 +93,10 @@ export default function WelcomeScreen() {
           <Pressable 
             onPress={(e) => handleNavigation('/(auth)/login', e)}
             disabled={isLoadingGuest}
-            className="bg-sky-500 p-5 rounded-2xl active:bg-sky-600 shadow-lg shadow-sky-500/20"
+            style={{ backgroundColor: theme.colors.accent }}
+            className="p-5 rounded-2xl"
           >
-            <Text className="text-white text-center font-bold text-lg">Get Started</Text>
+            <Text style={{ color: theme.colors.accentText }} className="text-center font-bold text-lg">Get Started</Text>
           </Pressable>
 
           {/* 4. Update Skip Button to trigger the Firebase Auth */}
@@ -104,11 +107,11 @@ export default function WelcomeScreen() {
           >
             <View className="flex-row justify-center items-center">
               {isLoadingGuest ? (
-                <ActivityIndicator color="#64748b" />
+                <ActivityIndicator color={theme.colors.mutedText} />
               ) : (
                 <>
-                  <Text className="text-slate-500 font-semibold text-base">Explore as Guest </Text>
-                  <MaterialCommunityIcons name="arrow-right" size={18} color="#64748b" />
+                  <Text style={{ color: theme.colors.subtleText }} className="font-semibold text-base">Explore as Guest </Text>
+                  <MaterialCommunityIcons name="arrow-right" size={18} color={theme.colors.subtleText} />
                 </>
               )}
             </View>
@@ -116,7 +119,7 @@ export default function WelcomeScreen() {
         </View>
 
         <View className="items-center">
-          <Text className="text-slate-700 text-[10px] uppercase tracking-[4px] font-black">
+          <Text style={{ color: theme.colors.subtleText }} className="text-[10px] uppercase tracking-[4px] font-black">
             Interactive House Mobile
           </Text>
         </View>

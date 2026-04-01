@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { auth } from '../../utils/firebaseConfig';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useGuest } from '../../utils/GuestContext';
+import { useAppTheme } from '../../utils/AppThemeContext';
 
 const AUTH_TIMEOUT_MS = 15_000;
 
@@ -32,6 +33,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 export default function LoginScreen() {
   const router = useRouter();
   const { setIsGuest } = useGuest();
+  const { theme } = useAppTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -86,7 +88,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: '#020617' }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -100,29 +102,30 @@ export default function LoginScreen() {
                 onPress={() => router.replace('/')}
                 className="flex-row items-center p-2 active:opacity-60"
               >
-                <MaterialCommunityIcons name="chevron-left" size={28} color="#0ea5e9" />
-                <Text className="text-sky-500 font-bold text-lg">Back</Text>
+                <MaterialCommunityIcons name="chevron-left" size={28} color={theme.colors.accent} />
+                <Text style={{ color: theme.colors.accent }} className="font-bold text-lg">Back</Text>
               </Pressable>
             </View>
             
             {/* Header Section */}
             <View className="items-center mb-10 mt-8">
               {/* Change <div> to <View> below */}
-              <View className="bg-sky-500/10 p-4 rounded-3xl mb-4">
-                <MaterialCommunityIcons name="shield-home" size={60} color="#0ea5e9" />
+              <View style={{ backgroundColor: theme.colors.accentSoft }} className="p-4 rounded-3xl mb-4">
+                <MaterialCommunityIcons name="shield-home" size={60} color={theme.colors.accent} />
               </View>
-              <Text className="text-white text-3xl font-bold tracking-tight">Welcome Back</Text>
-              <Text className="text-slate-500 text-lg mt-2">Sign in to control your home</Text>
+              <Text style={{ color: theme.colors.text }} className="text-3xl font-bold tracking-tight">Welcome Back</Text>
+              <Text style={{ color: theme.colors.mutedText }} className="text-lg mt-2">Sign in to control your home</Text>
             </View>
 
             {/* Form Section */}
             <View className="space-y-4">
               <View>
-                <Text className="text-slate-400 mb-2 ml-1 font-medium">Email Address</Text>
+                <Text style={{ color: theme.colors.text }} className="mb-2 ml-1 font-medium">Email Address</Text>
                 <TextInput
-                  className="bg-slate-900 border border-slate-800 text-white p-4 rounded-2xl mb-4"
+                  style={{ backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border, color: theme.colors.text }}
+                  className="border p-4 rounded-2xl mb-4"
                   placeholder="name@example.com"
-                  placeholderTextColor="#475569"
+                  placeholderTextColor={theme.colors.subtleText}
                   value={email}
                   onChangeText={(value) => {
                     setEmail(value);
@@ -141,13 +144,14 @@ export default function LoginScreen() {
               </View>
 
               <View>
-                <Text className="text-slate-400 mb-2 ml-1 font-medium">Password</Text>
+                <Text style={{ color: theme.colors.text }} className="mb-2 ml-1 font-medium">Password</Text>
                 {/* 2. Container for Password + Toggle Button */}
                 <View className="relative">
                   <TextInput
-                    className="bg-slate-900 border border-slate-800 text-white p-4 pr-12 rounded-2xl"
+                    style={{ backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border, color: theme.colors.text }}
+                    className="border p-4 pr-12 rounded-2xl"
                     placeholder="••••••••"
-                    placeholderTextColor="#475569"
+                    placeholderTextColor={theme.colors.subtleText}
                     value={password}
                     onChangeText={(value) => {
                       setPassword(value);
@@ -170,7 +174,7 @@ export default function LoginScreen() {
                     <MaterialCommunityIcons
                       name={isPasswordVisible ? "eye-off" : "eye"}
                       size={24}
-                      color="#64748b"
+                      color={theme.colors.subtleText}
                     />
                   </TouchableOpacity>
                 </View>
@@ -180,19 +184,20 @@ export default function LoginScreen() {
             {/* Action Buttons */}
             <View className="mt-8">
               {loginError && (
-                <View className="mb-4 rounded-2xl border border-red-500/40 bg-red-500/10 p-3">
-                  <Text className="text-red-300 text-sm font-medium">{loginError}</Text>
+                <View style={{ backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger }} className="mb-4 rounded-2xl border p-3">
+                  <Text style={{ color: theme.colors.danger }} className="text-sm font-medium">{loginError}</Text>
                 </View>
               )}
               <Pressable
-                className={`p-5 rounded-2xl items-center ${isLoading ? 'bg-sky-900' : 'bg-sky-500 active:bg-sky-600 shadow-lg shadow-sky-500/20'}`}
+                style={{ backgroundColor: isLoading ? theme.colors.surfaceStrong : theme.colors.accent }}
+                className="p-5 rounded-2xl items-center"
                 onPress={handleLogin}
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <ActivityIndicator color="white" />
+                  <ActivityIndicator color={theme.colors.accentText} />
                 ) : (
-                  <Text className="text-white font-bold text-lg">Sign In</Text>
+                  <Text style={{ color: theme.colors.accentText }} className="font-bold text-lg">Sign In</Text>
                 )}
               </Pressable>
 
@@ -202,17 +207,17 @@ export default function LoginScreen() {
                 disabled={isLoading}
               >
                 <View className="flex-row justify-center items-center">
-                  <Text className="text-slate-500 font-semibold text-base">Continue as Guest </Text>
-                  <MaterialCommunityIcons name="arrow-right" size={18} color="#64748b" />
+                  <Text style={{ color: theme.colors.subtleText }} className="font-semibold text-base">Continue as Guest </Text>
+                  <MaterialCommunityIcons name="arrow-right" size={18} color={theme.colors.subtleText} />
                 </View>
               </Pressable>
             </View>
 
             {/* Redirect to Signup */}
             <View className="flex-row justify-center mt-8">
-              <Text className="text-slate-500">Don't have an account? </Text>
+              <Text style={{ color: theme.colors.mutedText }}>Don't have an account? </Text>
               <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
-                <Text className="text-sky-500 font-bold">Sign Up</Text>
+                <Text style={{ color: theme.colors.accent }} className="font-bold">Sign Up</Text>
               </TouchableOpacity>
             </View>
 

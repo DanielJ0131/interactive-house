@@ -4,11 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { useAppTheme } from '../utils/AppThemeContext';
 
 type EmergencyState = 'confirm' | 'calling' | 'ended';
 
 export default function EmergencyScreen() {
   const router = useRouter();
+  const { theme } = useAppTheme();
   const [state, setState] = useState<EmergencyState>('confirm');
   const [seconds, setSeconds] = useState(0);
 
@@ -49,36 +51,36 @@ export default function EmergencyScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <Modal transparent visible={state === 'confirm'} animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <View style={styles.iconWrap}>
-              <MaterialCommunityIcons name="phone-alert" size={36} color="#f87171" />
+        <View style={[styles.modalOverlay, { backgroundColor: theme.colors.overlay }]}>
+          <View style={[styles.modalBox, { backgroundColor: theme.colors.surface, borderColor: theme.colors.dangerSoft }]}>
+            <View style={[styles.iconWrap, { backgroundColor: theme.colors.dangerSoft }]}>
+              <MaterialCommunityIcons name="phone-alert" size={36} color={theme.colors.danger} />
             </View>
 
-            <Text style={styles.modalTitle}>Emergency Assistance</Text>
-            <Text style={styles.modalText}>
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Emergency Assistance</Text>
+            <Text style={[styles.modalText, { color: theme.colors.mutedText }]}>
               Do you want to start an emergency call?
             </Text>
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={[styles.smallButton, styles.cancelButton]}
+                style={[styles.smallButton, styles.cancelButton, { backgroundColor: theme.colors.surfaceStrong }]}
                 onPress={() => {
                   setState('confirm');
                   setSeconds(0);
                   router.back();
                 }}
               >
-                <Text style={styles.buttonText}>Cancel</Text>
+                <Text style={[styles.buttonText, { color: theme.colors.accentText }]}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.smallButton, styles.callButton]}
+                style={[styles.smallButton, styles.callButton, { backgroundColor: theme.colors.danger }]}
                 onPress={startCall}
               >
-                <Text style={styles.buttonText}>Call Now</Text>
+                <Text style={[styles.buttonText, { color: theme.colors.accentText }]}>Call Now</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -87,35 +89,35 @@ export default function EmergencyScreen() {
 
       {state === 'calling' && (
         <View style={styles.centerContent}>
-          <View style={styles.callingIcon}>
-            <MaterialCommunityIcons name="phone-in-talk" size={48} color="#f87171" />
+          <View style={[styles.callingIcon, { backgroundColor: theme.colors.dangerSoft }]}>
+            <MaterialCommunityIcons name="phone-in-talk" size={48} color={theme.colors.danger} />
           </View>
-          <Text style={styles.callingText}>Calling...</Text>
-          <Text style={styles.name}>Emergency Support</Text>
-          <Text style={styles.timer}>{formatTime(seconds)}</Text>
+          <Text style={[styles.callingText, { color: theme.colors.danger }]}>Calling...</Text>
+          <Text style={[styles.name, { color: theme.colors.text }]}>Emergency Support</Text>
+          <Text style={[styles.timer, { color: theme.colors.mutedText }]}>{formatTime(seconds)}</Text>
 
-          <TouchableOpacity style={styles.endButton} onPress={endCall}>
-            <Text style={styles.buttonText}>End Call</Text>
+          <TouchableOpacity style={[styles.endButton, { backgroundColor: theme.colors.danger }]} onPress={endCall}>
+            <Text style={[styles.buttonText, { color: theme.colors.accentText }]}>End Call</Text>
           </TouchableOpacity>
         </View>
       )}
 
       {state === 'ended' && (
         <View style={styles.centerContent}>
-          <View style={styles.endedIcon}>
-            <MaterialCommunityIcons name="phone-hangup" size={48} color="#38bdf8" />
+          <View style={[styles.endedIcon, { backgroundColor: theme.colors.accentSoft }]}>
+            <MaterialCommunityIcons name="phone-hangup" size={48} color={theme.colors.accent} />
           </View>
-          <Text style={styles.endedText}>Call ended</Text>
+          <Text style={[styles.endedText, { color: theme.colors.text }]}>Call ended</Text>
 
           <TouchableOpacity
-            style={styles.backButton}
+            style={[styles.backButton, { backgroundColor: theme.colors.accent }]}
             onPress={() => {
               setState('confirm');
               setSeconds(0);
               router.back();
             }}
           >
-            <Text style={styles.buttonText}>Back</Text>
+            <Text style={[styles.buttonText, { color: theme.colors.accentText }]}>Back</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -126,7 +128,6 @@ export default function EmergencyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#020617',
   },
   centerContent: {
     flex: 1,
@@ -138,7 +139,6 @@ const styles = StyleSheet.create({
     height: 96,
     width: 96,
     borderRadius: 24,
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
@@ -147,13 +147,11 @@ const styles = StyleSheet.create({
     height: 96,
     width: 96,
     borderRadius: 24,
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
   },
   callingText: {
-    color: '#f87171',
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 8,
@@ -161,75 +159,63 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
   },
   name: {
-    color: '#fff',
     fontSize: 30,
     fontWeight: '800',
     marginBottom: 14,
   },
   timer: {
-    color: '#94a3b8',
     fontSize: 22,
     fontWeight: '600',
     marginBottom: 28,
   },
   endButton: {
-    backgroundColor: '#dc2626',
     paddingVertical: 16,
     paddingHorizontal: 30,
     borderRadius: 16,
   },
   backButton: {
-    backgroundColor: '#0284c7',
     paddingVertical: 16,
     paddingHorizontal: 30,
     borderRadius: 16,
     marginTop: 12,
   },
   endedText: {
-    color: '#fff',
     fontSize: 28,
     fontWeight: '800',
     marginBottom: 20,
   },
   buttonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '800',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(2, 6, 23, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
   modalBox: {
     width: '100%',
-    backgroundColor: '#0f172a',
     borderRadius: 24,
     padding: 24,
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
   },
   iconWrap: {
     height: 72,
     width: 72,
     borderRadius: 20,
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 18,
     alignSelf: 'center',
   },
   modalTitle: {
-    color: '#fff',
     fontSize: 24,
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: 10,
   },
   modalText: {
-    color: '#cbd5e1',
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 22,
@@ -245,9 +231,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: '#334155',
   },
   callButton: {
-    backgroundColor: '#dc2626',
   },
 });
