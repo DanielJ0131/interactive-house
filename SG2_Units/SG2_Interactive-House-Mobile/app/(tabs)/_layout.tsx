@@ -8,6 +8,7 @@ import { onSnapshotsInSync } from 'firebase/firestore';
 import { db, auth } from '../../utils/firebaseConfig';
 import { useGuest } from '../../utils/GuestContext';
 import SpeechOverlay from "../../components/speechOverlay";
+import EmergencyHeaderButton from "../../components/EmergencyHeaderButton";
 
 cssInterop(MaterialCommunityIcons, {
   className: 'style',
@@ -42,7 +43,7 @@ export default function TabLayout() {
       unsubscribeSync();
       unsubscribeAuth();
     };
-  }, [isGuest]);
+  }, [isGuest, router]);
 
   // 3. Sign Out / Leave Guest Mode
   const handleSignOut = async () => {
@@ -109,6 +110,8 @@ export default function TabLayout() {
           },
           headerRight: () => (
             <View className="flex-row items-center mr-4">
+              <EmergencyHeaderButton onPress={() => router.push('/emergency')} />
+
               <Pressable
                 onPress={handleSignOut}
                 hitSlop={20}
