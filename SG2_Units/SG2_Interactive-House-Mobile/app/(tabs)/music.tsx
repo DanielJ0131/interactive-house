@@ -665,15 +665,6 @@ export default function MusicScreen() {
       <View style={{ backgroundColor: theme.colors.background }} className="flex-1 px-6 py-8 items-center justify-center">
         <MaterialCommunityIcons name="music-note-off" size={48} color={theme.colors.mutedText} />
         <Text style={{ color: theme.colors.text }} className="mt-4 text-center">{loadError}</Text>
-        <Text style={{ color: theme.colors.subtleText }} className="mt-3 text-xs text-center">
-          Auth ready: {isAuthReady ? 'yes' : 'no'} | Authenticated: {isAuthenticated ? 'yes' : 'no'}
-        </Text>
-        <Text style={{ color: theme.colors.subtleText }} className="mt-1 text-xs text-center">
-          User: {activeUserEmail}
-        </Text>
-        <Text style={{ color: theme.colors.subtleText }} className="mt-1 text-xs text-center">
-          Project: {activeProjectId}
-        </Text>
       </View>
     );
   }
@@ -740,7 +731,7 @@ export default function MusicScreen() {
           <Pressable
             onPress={handleAddMelody}
             disabled={isSavingMelody}
-            style={{ backgroundColor: isSavingMelody ? theme.colors.surfaceStrong : theme.colors.success }}
+            style={{ backgroundColor: isSavingMelody ? theme.colors.surfaceStrong : theme.colors.accent }}
             className="rounded-xl py-3 items-center"
           >
             {isSavingMelody ? (
@@ -859,10 +850,10 @@ export default function MusicScreen() {
                   <Pressable
                     key={option}
                     onPress={() => setInstrument(option)}
-                    style={{ backgroundColor: isSelected ? theme.colors.success : theme.colors.surface, borderColor: isSelected ? theme.colors.success : theme.colors.border }}
+                    style={{ backgroundColor: isSelected ? theme.colors.accent : theme.colors.surface, borderColor: isSelected ? theme.colors.accent : theme.colors.border }}
                     className="px-3 py-2 rounded-xl border"
                   >
-                    <Text style={{ color: isSelected ? '#ffffff' : theme.colors.mutedText }} className="font-semibold text-xs">
+                    <Text style={{ color: isSelected ? theme.colors.text : theme.colors.mutedText }} className="font-semibold text-xs">
                       {option}
                     </Text>
                   </Pressable>

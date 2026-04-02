@@ -7,10 +7,12 @@ import {
   FlatList,
   ActivityIndicator,
 } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Markdown from "react-native-markdown-display";
 import { updateDoc } from "firebase/firestore";
 import { getGeminiModel, db } from "../../utils/firebaseConfig";
 import { getArduinoDevicesDocRef } from "../../utils/firestorePaths";
+import { useGuest } from "../../utils/GuestContext";
 import { useAppTheme } from "../../utils/AppThemeContext";
 
 type Message = { id: string; text: string; sender: "user" | "ai" };
@@ -109,6 +111,7 @@ async function executeDeviceCommand(device: DeviceKey, state: DeviceState) {
 
 export default function AiScreen() {
   const { theme } = useAppTheme();
+  const { isGuest } = useGuest();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -242,6 +245,15 @@ Examples:
       }, 100);
     }
   };
+
+  if (isGuest) {
+    return (
+      <View style={{ backgroundColor: theme.colors.background }} className="flex-1 px-6 py-8 items-center justify-center">
+        <MaterialCommunityIcons name="robot-confused" size={48} color={theme.colors.mutedText} />
+        <Text style={{ color: theme.colors.text }} className="mt-4 text-center">Guest mode cannot control devices. Sign in to use AI controls.</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={{ backgroundColor: theme.colors.background }} className="flex-1 p-4">
