@@ -22,12 +22,18 @@ import { useAppTheme } from '../../utils/AppThemeContext';
 const AUTH_TIMEOUT_MS = 15_000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Request timed out. Please check your connection and try again.')), ms)
-    ),
-  ]);
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error('Request timed out. Please check your connection and try again.'));
+    }, ms);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  });
 }
 
 export default function LoginScreen() {
@@ -168,6 +174,7 @@ export default function LoginScreen() {
                   />
                   {/* 4. The Eye Icon Button */}
                   <TouchableOpacity
+                    testID="password-visibility-toggle"
                     onPress={() => setIsPasswordVisible(!isPasswordVisible)}
                     style={{ position: 'absolute', right: 16, top: 16 }}
                   >
@@ -189,6 +196,7 @@ export default function LoginScreen() {
                 </View>
               )}
               <Pressable
+                testID="sign-in-button"
                 style={{ backgroundColor: isLoading ? theme.colors.surfaceStrong : theme.colors.accent }}
                 className="p-5 rounded-2xl items-center"
                 onPress={handleLogin}
@@ -202,6 +210,7 @@ export default function LoginScreen() {
               </Pressable>
 
               <Pressable
+                testID="guest-login-button"
                 className="mt-6 py-2 active:opacity-60"
                 onPress={handleGuestLogin}
                 disabled={isLoading}

@@ -25,7 +25,7 @@ jest.mock('firebase/auth', () => ({
   getReactNativePersistence: jest.fn(),
 }));
 
-jest.mock('../utils/firebaseConfig', () => ({
+jest.mock('../../utils/firebaseConfig', () => ({
   auth: { currentUser: mockCurrentUser },
   db: {},
 }));
@@ -51,7 +51,7 @@ describe('Firebase Auth', () => {
   describe('signInWithEmailAndPassword', () => {
     it('resolves on valid credentials', async () => {
       mockSignIn.mockResolvedValue({ user: mockCurrentUser });
-      const { auth } = require('../utils/firebaseConfig');
+      const { auth } = require('../../utils/firebaseConfig');
       const { signInWithEmailAndPassword } = require('firebase/auth');
 
       const result = await signInWithEmailAndPassword(auth, 'test@example.com', 'pass123');
@@ -61,7 +61,7 @@ describe('Firebase Auth', () => {
 
     it('rejects with auth/invalid-credential on bad password', async () => {
       mockSignIn.mockRejectedValue({ code: 'auth/invalid-credential', message: 'Invalid email or password.' });
-      const { auth } = require('../utils/firebaseConfig');
+      const { auth } = require('../../utils/firebaseConfig');
       const { signInWithEmailAndPassword } = require('firebase/auth');
 
       await expect(signInWithEmailAndPassword(auth, 'test@example.com', 'wrong'))
@@ -70,7 +70,7 @@ describe('Firebase Auth', () => {
 
     it('rejects with auth/network-request-failed on network error', async () => {
       mockSignIn.mockRejectedValue({ code: 'auth/network-request-failed', message: 'Network error.' });
-      const { auth } = require('../utils/firebaseConfig');
+      const { auth } = require('../../utils/firebaseConfig');
       const { signInWithEmailAndPassword } = require('firebase/auth');
 
       await expect(signInWithEmailAndPassword(auth, 'test@example.com', 'pass'))
@@ -84,7 +84,7 @@ describe('Firebase Auth', () => {
     it('resolves with an anonymous user', async () => {
       const anonUser = { uid: 'anon1', isAnonymous: true };
       mockSignInAnonymously.mockResolvedValue({ user: anonUser });
-      const { auth } = require('../utils/firebaseConfig');
+      const { auth } = require('../../utils/firebaseConfig');
       const { signInAnonymously } = require('firebase/auth');
 
       const result = await signInAnonymously(auth);
@@ -93,7 +93,7 @@ describe('Firebase Auth', () => {
 
     it('rejects on network failure', async () => {
       mockSignInAnonymously.mockRejectedValue({ code: 'auth/network-request-failed' });
-      const { auth } = require('../utils/firebaseConfig');
+      const { auth } = require('../../utils/firebaseConfig');
       const { signInAnonymously } = require('firebase/auth');
 
       await expect(signInAnonymously(auth))
@@ -107,7 +107,7 @@ describe('Firebase Auth', () => {
     it('creates a new user and updates the profile', async () => {
       mockCreateUser.mockResolvedValue({ user: mockCurrentUser });
       mockUpdateProfile.mockResolvedValue(undefined);
-      const { auth } = require('../utils/firebaseConfig');
+      const { auth } = require('../../utils/firebaseConfig');
       const { createUserWithEmailAndPassword, updateProfile } = require('firebase/auth');
 
       const cred = await createUserWithEmailAndPassword(auth, 'new@example.com', 'pass123');
@@ -119,7 +119,7 @@ describe('Firebase Auth', () => {
 
     it('rejects with auth/email-already-in-use for duplicate emails', async () => {
       mockCreateUser.mockRejectedValue({ code: 'auth/email-already-in-use' });
-      const { auth } = require('../utils/firebaseConfig');
+      const { auth } = require('../../utils/firebaseConfig');
       const { createUserWithEmailAndPassword } = require('firebase/auth');
 
       await expect(createUserWithEmailAndPassword(auth, 'dup@example.com', 'pass'))
@@ -128,7 +128,7 @@ describe('Firebase Auth', () => {
 
     it('rejects with auth/weak-password for short passwords', async () => {
       mockCreateUser.mockRejectedValue({ code: 'auth/weak-password' });
-      const { auth } = require('../utils/firebaseConfig');
+      const { auth } = require('../../utils/firebaseConfig');
       const { createUserWithEmailAndPassword } = require('firebase/auth');
 
       await expect(createUserWithEmailAndPassword(auth, 'x@y.com', '12'))
@@ -144,7 +144,7 @@ describe('Firebase Auth', () => {
         cb(mockCurrentUser);
         return jest.fn(); // unsubscribe
       });
-      const { auth } = require('../utils/firebaseConfig');
+      const { auth } = require('../../utils/firebaseConfig');
       const { onAuthStateChanged } = require('firebase/auth');
       const callback = jest.fn();
 
@@ -158,7 +158,7 @@ describe('Firebase Auth', () => {
         cb(null);
         return jest.fn();
       });
-      const { auth } = require('../utils/firebaseConfig');
+      const { auth } = require('../../utils/firebaseConfig');
       const { onAuthStateChanged } = require('firebase/auth');
       const callback = jest.fn();
 
