@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { PageShell } from "@/components/pageShell";
+import TopHeader from "@/components/TopHeader";
 import { db } from "@/utils/firebaseConfig";
 import { collection, getDocs } from "firebase/firestore";
 import Link from "next/link";
@@ -74,6 +75,8 @@ export default function MusicPage() {
     }, []);
 
     return (
+        <main className="min-h-screen bg-transparent">
+        <TopHeader />
         <PageShell title="Music" subtitle="Music Control ">
             <div className="max-w-5xl mx-auto p-4 md:p-6">
 
@@ -163,5 +166,6 @@ export default function MusicPage() {
                 </div>
             </div>
         </PageShell>
+        </main>
     );
 }
