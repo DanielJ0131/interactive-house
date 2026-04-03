@@ -1,26 +1,13 @@
-export type Zone = {
-    id: string;
-    name: string;
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+
+const firebaseConfig = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
-
-export type DeviceType = "light" | "tv" | "thermometer" | "door" | "coffee" | "microwave";
-
-export type Device = {
-    id: string;
-    zoneId: string;
-    name: string;
-    type: DeviceType;
-    online: boolean;
-    state: Record<string, unknown>; // e.g. { power: true, brightness: 80 }
-};
-
-export type UiControl =
-    | { id: string; type: "toggle"; label: string; command: string }
-    | { id: string; type: "slider"; label: string; command: string; min: number; max: number }
-    | { id: string; type: "button"; label: string; command: string };
-
-export type DeviceUiDefinition = {
-    deviceId: string;
-    title: string;
-    controls: UiControl[];
-};
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
