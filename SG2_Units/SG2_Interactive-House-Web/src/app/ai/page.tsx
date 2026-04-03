@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PageShell } from "@/components/pageShell";
+import TopHeader from "@/components/TopHeader";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { doc, updateDoc } from "firebase/firestore";
@@ -220,6 +221,8 @@ ${trimmed}
   };
 
   return (
+    <main className="min-h-screen bg-transparent">
+    <TopHeader />
     <PageShell title="AI" subtitle="AI Control">
       <div className="flex flex-col gap-6 max-w-4xl mx-auto">
 
@@ -236,7 +239,7 @@ ${trimmed}
         <div className="h-[500px] overflow-y-auto rounded-[2rem] bg-white/5 border border-white/10 backdrop-blur-md p-6 shadow-2xl flex flex-col gap-4">
           {messages.length === 0 ? (
             <div className="h-full flex items-center justify-center text-white/20 uppercase tracking-[0.2em] font-black text-xs text-center">
-              Awaiting instructions for home control...
+              Group 4 Software Engineering HKR
             </div>
           ) : (
             messages.map((msg) => (
@@ -274,7 +277,7 @@ ${trimmed}
             className="flex-1 bg-transparent px-6 py-2 text-white placeholder:text-white/30 outline-none font-medium resize-none max-h-32"
             rows={1}
             value={message}
-            placeholder="Type your command (e.g., 'Turn on the fan')..."
+            placeholder="Write a command or ask a question (e.g., 'Turn on the lights')..."
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -295,5 +298,6 @@ ${trimmed}
         </div>
       </div>
     </PageShell>
+  </main>
   );
 }

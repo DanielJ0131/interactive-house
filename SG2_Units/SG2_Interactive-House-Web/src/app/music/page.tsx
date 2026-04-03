@@ -74,7 +74,7 @@ export default function MusicPage() {
     }, []);
 
     return (
-        <PageShell title="Music" subtitle="Control Center">
+        <PageShell title="Music" subtitle="Music Control ">
             <div className="max-w-5xl mx-auto p-4 md:p-6">
 
                 {/* TOP NAVIGATION & CONTROLS */}
