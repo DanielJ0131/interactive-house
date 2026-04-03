@@ -1,21 +1,11 @@
-import os, time, serial
+import time
+import serial
 from threading import Lock
-from dotenv import load_dotenv
-
-# Get the directory containing this script
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)  # smarthouse-gateway directory
-
-load_dotenv(os.path.join(PROJECT_ROOT, "config/.env"))
-
-PORT = os.getenv("SERIAL_PORT", "COM3")
-BAUD = int(os.getenv("SERIAL_BAUD","9600"))
-
 
 
 class SerialClient:
-    def __init__(self):
-        self.ser = serial.Serial(PORT,BAUD, timeout= 1)
+    def __init__(self, port: str, baud: int):
+        self.ser = serial.Serial(port, baud, timeout=1)
         self._write_lock = Lock()
         time.sleep(2)
 
@@ -24,8 +14,7 @@ class SerialClient:
             self.ser.write((line + "\n").encode("utf-8"))
             self.ser.flush()
 
-    def read_line(self):
-        """Non-blocking read of one line from Arduino."""
+    def read_line(self) -> str:
         raw = self.ser.readline()
         if not raw:
             return ""
