@@ -40,29 +40,40 @@ export default function MusicPage() {
     };
 
     const playMusic = async (songId: string, frequencies: number[]) => {
-        stopMusic();
-        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        audioCtxRef.current = audioCtx;
-        setActiveSongId(songId);
+    stopMusic();
 
-        for (const freq of frequencies) {
-            if (!audioCtxRef.current) break;
-            if (freq > 0) {
-                const oscillator = audioCtx.createOscillator();
-                const gainNode = audioCtx.createGain();
-                oscillator.type = "sine";
-                oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
-                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
-                oscillator.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
-                oscillator.start();
-                oscillator.stop(audioCtx.currentTime + 0.2);
-            }
-            await new Promise(resolve => setTimeout(resolve, currentSpeed));
+    const WinAudioContext = (window as unknown as {
+        AudioContext: typeof AudioContext;
+        webkitAudioContext: typeof AudioContext
+    });
+
+    const SelectedContext = WinAudioContext.AudioContext || WinAudioContext.webkitAudioContext;
+    const audioCtx = new SelectedContext();
+    
+    audioCtxRef.current = audioCtx;
+    setActiveSongId(songId);
+
+    for (const freq of frequencies) {
+        if (!audioCtxRef.current) break;
+        
+        if (freq > 0) {
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.type = "sine";
+            oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.2);
         }
-        if (audioCtxRef.current === audioCtx) setActiveSongId(null);
-    };
+        
+        await new Promise(resolve => setTimeout(resolve, currentSpeed));
+    }
+    
+    if (audioCtxRef.current === audioCtx) setActiveSongId(null);
+};
 
     useEffect(() => {
         const fetchMusic = async () => {
