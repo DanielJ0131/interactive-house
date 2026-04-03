@@ -6,6 +6,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { doc, updateDoc } from "firebase/firestore";
 import { db, model } from "@/utils/firebaseConfig";
+import Link from "next/link";
+import { CaretLeft, PaperPlaneRight } from "@phosphor-icons/react";
 
 type ChatMessage = {
   id: string;
@@ -19,21 +21,21 @@ type DeviceKey =
   | "window"
   | "fan_INA"
   | "fan_INB"
-  | "bazaar";
+  | "buzzer";
 
 type DeviceState = "on" | "off" | "open" | "closed";
 
 type AICommand =
   | {
-      type: "device_control";
-      device: DeviceKey;
-      state: DeviceState;
-      reply: string;
-    }
+    type: "device_control";
+    device: DeviceKey;
+    state: DeviceState;
+    reply: string;
+  }
   | {
-      type: "chat";
-      reply: string;
-    };
+    type: "chat";
+    reply: string;
+  };
 
 const DEVICE_RULES: Record<DeviceKey, DeviceState[]> = {
   white_light: ["on", "off"],
@@ -41,7 +43,7 @@ const DEVICE_RULES: Record<DeviceKey, DeviceState[]> = {
   window: ["open", "closed"],
   fan_INA: ["on", "off"],
   fan_INB: ["on", "off"],
-  bazaar: ["on", "off"],
+  buzzer: ["on", "off"],
 };
 
 function isValidCommand(data: unknown): data is AICommand {
@@ -162,7 +164,7 @@ Supported devices and states:
 - window: open, closed
 - fan_INA: on, off
 - fan_INB: on, off
-- bazaar: on, off
+- buzzer: on, off
 
 Examples:
 {"type":"device_control","device":"door","state":"open","reply":"Opening the door."}
@@ -170,7 +172,7 @@ Examples:
 {"type":"device_control","device":"fan_INA","state":"on","reply":"Turning on fan INA."}
 {"type":"device_control","device":"fan_INB","state":"off","reply":"Turning off fan INB."}
 {"type":"device_control","device":"white_light","state":"off","reply":"Turning off the white light."}
-{"type":"device_control","device":"bazaar","state":"on","reply":"Turning on the buzzer."}
+{"type":"device_control","device":"buzaar","state":"on","reply":"Turning on the buzzer."}
 {"type":"chat","reply":"I can help control the door, window, white light, fan INA, fan INB, and buzzer."}
 
 User request:
@@ -219,39 +221,60 @@ ${trimmed}
 
   return (
     <PageShell title="AI" subtitle="AI Control">
-      <div className="flex flex-col gap-4">
-        <div className="h-[400px] overflow-y-auto rounded-xl bg-black/20 p-4">
+      <div className="flex flex-col gap-6 max-w-4xl mx-auto">
+
+        {/* BACK TO HUB BUTTON - Matches Hub Styling */}
+        <Link
+          href="/hub"
+          className="group self-start flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md text-white/80 font-bold text-sm hover:bg-white/10 transition-all shadow-xl"
+        >
+          <CaretLeft size={18} weight="bold" className="group-hover:-translate-x-1 transition-transform" />
+          BACK TO HUB
+        </Link>
+
+        {/* CHAT WINDOW - Glassmorphism Style */}
+        <div className="h-[500px] overflow-y-auto rounded-[2rem] bg-white/5 border border-white/10 backdrop-blur-md p-6 shadow-2xl flex flex-col gap-4">
           {messages.length === 0 ? (
-            <p>Start the conversation...</p>
+            <div className="h-full flex items-center justify-center text-white/20 uppercase tracking-[0.2em] font-black text-xs text-center">
+              Awaiting instructions for home control...
+            </div>
           ) : (
             messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`mb-3 max-w-[80%] rounded-lg p-3 ${
-                  msg.role === "user"
-                    ? "ml-auto bg-blue-600 text-white"
-                    : "mr-auto bg-white/10 text-white"
-                }`}
+                className={`max-w-[85%] rounded-2xl p-4 text-sm shadow-lg ${msg.role === "user"
+                    ? "ml-auto bg-[#0EA5E9] text-black font-bold" // Active color matching Hub buttons
+                    : "mr-auto bg-white/10 text-white border border-white/10 backdrop-blur-sm"
+                  }`}
               >
                 {msg.role === "user" ? (
                   <p>{msg.text}</p>
                 ) : (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {msg.text}
-                  </ReactMarkdown>
+                  <div className="prose prose-invert max-w-none">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {msg.text}
+                    </ReactMarkdown>
+                  </div>
                 )}
               </div>
             ))
           )}
 
-          {loading && <p>Thinking...</p>}
+          {loading && (
+            <div className="flex items-center gap-2 text-[#0EA5E9] text-[10px] font-black uppercase tracking-widest animate-pulse ml-2">
+              <div className="w-1.5 h-1.5 bg-[#0EA5E9] rounded-full" />
+              AI is Thinking...
+            </div>
+          )}
         </div>
 
-        <div className="flex gap-2">
+        {/* INPUT AREA - Rounded Bar Style */}
+        <div className="flex gap-3 bg-white/10 p-2 rounded-[2.5rem] border border-white/20 backdrop-blur-md shadow-2xl items-center">
           <textarea
-            className="flex-1 rounded-lg p-2 text-black"
+            className="flex-1 bg-transparent px-6 py-2 text-white placeholder:text-white/30 outline-none font-medium resize-none max-h-32"
+            rows={1}
             value={message}
-            placeholder="Type message..."
+            placeholder="Type your command (e.g., 'Turn on the fan')..."
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -265,9 +288,9 @@ ${trimmed}
           <button
             onClick={handleSend}
             disabled={loading || !message.trim()}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
+            className="h-12 w-12 flex items-center justify-center rounded-full bg-[#0EA5E9] text-black hover:scale-105 active:scale-95 transition-all disabled:opacity-20 shadow-lg shadow-[#0EA5E9]/30"
           >
-            {loading ? "Sending..." : "Send"}
+            <PaperPlaneRight size={22} weight="fill" />
           </button>
         </div>
       </div>
