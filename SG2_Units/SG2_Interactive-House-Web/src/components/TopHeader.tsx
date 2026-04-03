@@ -24,7 +24,7 @@ export default function TopHeader() {
     };
 
     return (
-        <header className="w-full border-b border-white/10 bg-[#070F2B]">
+        <header className="w-full border-b border-white/10 bg-[#000000]/50 backdrop-blur-sm">
             <div className="mx-auto max-w-6xl flex items-center justify-between px-6 py-4">
 
                 <div className="text-white font-bold text-lg tracking-wide">

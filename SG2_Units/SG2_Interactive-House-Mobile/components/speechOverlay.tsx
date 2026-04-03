@@ -3,11 +3,14 @@ import { View, Text, Pressable, Alert, PermissionsAndroid, Platform } from "reac
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { hubController } from '../utils/hubController';
 import { useRouter } from "expo-router";
+import { useAppTheme } from '../utils/AppThemeContext';
 
 export default function SpeechOverlay() {
   const router = useRouter();
+  const { theme } = useAppTheme();
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const shouldShowTranscriptBubble = isListening || transcript.length > 0;
 
   let SpeechRecognition: any = null;
 
@@ -64,8 +67,6 @@ export default function SpeechOverlay() {
 
     if (lower.includes("window"))
       hub.toggleDevice?.("servo_window")
-
-    if (lower.includes("hub")) router.push("/(tabs)/device_hub");
     
     if (lower.includes("ai")) router.push("/(tabs)/ai");
   };
@@ -122,23 +123,22 @@ export default function SpeechOverlay() {
     >
       <Pressable
         onPress={isListening ? stopListening : startListening}
-        className={`h-20 w-20 rounded-full items-center justify-center ${
-          isListening ? "bg-red-500/20" : "bg-sky-500/10"
-        }`}
+        style={{ backgroundColor: isListening ? theme.colors.dangerSoft : theme.colors.accentSoft }}
+        className="h-20 w-20 rounded-full items-center justify-center"
       >
         <MaterialCommunityIcons
           name={isListening ? "microphone-off" : "microphone"}
           size={36}
-          color={isListening ? "#ef4444" : "#0ea5e9"}
+          color={isListening ? theme.colors.danger : theme.colors.accent}
         />
       </Pressable>
 
-      {(isListening || transcript) && (
-        <View className="mr-2 bg-slate-900/90 border border-slate-800 px-4 py-3 rounded-2xl max-w-[220px]">
+      {shouldShowTranscriptBubble && (
+        <View style={{ backgroundColor: theme.colors.chipBackground, borderColor: theme.colors.border }} className="mr-2 border px-4 py-3 rounded-2xl max-w-[220px]">
           {transcript ? (
-            <Text className="text-white text-sm">{transcript}</Text>
+            <Text style={{ color: theme.colors.text }} className="text-sm">{transcript}</Text>
           ) : (
-            <Text className="text-slate-400 text-sm">Listening...</Text>
+            <Text style={{ color: theme.colors.mutedText }} className="text-sm">Listening...</Text>
           )}
         </View>
       )}

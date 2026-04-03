@@ -41,6 +41,8 @@ function VoiceTile() {
     );
 }
 
+
+
 function DeviceCard({
     icon,
     title,
@@ -149,7 +151,7 @@ export default function HubPage() {
     const [fanINA, setFanINA] = useState(false);
     const [fanINB, setFanINB] = useState(false);
     const [yellowLed, setYellowLed] = useState(0);
-    const [bazaar, setBazaar] = useState(false);
+    const [buzzer, setBuzzer] = useState(false);
 
     const [motion, setMotion] = useState(0);
     const [steam, setSteam] = useState(0);
@@ -178,7 +180,7 @@ export default function HubPage() {
             setFanINA(data.fan_INA?.state === "on");
             setFanINB(data.fan_INB?.state === "on");
             setYellowLed(data.yellow_led?.value ?? 0);
-            setBazaar(data.bazaar?.state === "on");
+            setBuzzer(data.buzzer?.state === "on");
 
             setMotion(data.telemetry?.motion ?? 0);
             setSteam(data.telemetry?.steam ?? 0);
@@ -199,7 +201,7 @@ export default function HubPage() {
     const toggleWindow = async () => await updateDoc(deviceRef, { "window.state": windowState ? "closed" : "open" });
     const toggleFanINA = async () => await updateDoc(deviceRef, { "fan_INA.state": fanINA ? "off" : "on" });
     const toggleFanINB = async () => await updateDoc(deviceRef, { "fan_INB.state": fanINB ? "off" : "on" });
-    const toggleBazaar = async () => await updateDoc(deviceRef, { "bazaar.state": bazaar ? "off" : "on" });
+    const toggleBuzzer = async () => await updateDoc(deviceRef, { "buzzer.state": buzzer ? "off" : "on" });
 
     const handleYellowLedChange = async (val: number) => {
         setYellowLed(val);
@@ -208,9 +210,9 @@ export default function HubPage() {
 
     return (
         <main className="min-h-screen bg-transparent">
-            <TopHeader />
+<TopHeader />
 
-            <PageShell title={`${username}'s Hub`} subtitle="Control Center">
+<PageShell title={`${username}'s Hub`} subtitle="Control Center">
 
                 <VoiceTile />
 
@@ -227,7 +229,7 @@ export default function HubPage() {
 
                     <SliderCard title="Yellow LED" pin="5" icon={<Lightbulb size={24} weight="fill" />} value={yellowLed} onChange={handleYellowLedChange} />
 
-                    <DeviceCard title="Buzzer" pin="3" icon={<Cloud size={24} weight="fill" />} state={bazaar ? "ON" : "OFF"} onToggle={toggleBazaar} />
+                    <DeviceCard title="Buzzer" pin="3" icon={<Cloud size={24} weight="fill" />} state={buzzer ? "ON" : "OFF"} onToggle={toggleBuzzer} />
                 </div>
 
                 <h2 className="text-[10px] tracking-[0.4em] text-purple-400 font-black mt-12 mb-6 uppercase opacity-80">

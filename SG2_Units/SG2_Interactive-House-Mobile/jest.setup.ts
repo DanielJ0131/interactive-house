@@ -22,3 +22,23 @@ jest.doMock('expo-router', () => ({
   useRouter: () => ({ push: jest.fn() }),
   useLocalSearchParams: () => ({ room: 'kitchen' }),
 }));
+
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock')
+);
+
+const originalConsoleError = console.error.bind(console);
+
+jest.spyOn(console, 'error').mockImplementation((...args: any[]) => {
+  const message = String(args[0] ?? '');
+  if (
+    message.includes('not wrapped in act') ||
+    message === 'Error: boom' ||
+    message === 'Error: Network failure' ||
+    message === 'Error: Firestore unavailable'
+  ) {
+    return;
+  }
+
+  originalConsoleError(...args);
+});

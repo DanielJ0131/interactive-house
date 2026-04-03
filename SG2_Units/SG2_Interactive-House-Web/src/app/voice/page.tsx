@@ -39,7 +39,7 @@ export default function VoicePage() {
                         className="mt-8 flex items-center gap-2 text-white/30 hover:text-[#0EA5E9] transition-colors text-xs font-bold uppercase tracking-widest"
                     >
                         <CaretLeft size={16} />
-                        Return to Dashboard
+                        Return to Hub
                     </Link>
                 </div>
             </PageShell>
