@@ -156,8 +156,7 @@ Rules:
 - Never use markdown code fences.
 - If the user wants to control a device, return:
   {"type":"device_control","device":"<device>","state":"<state>","reply":"<short confirmation>"}
-- If the user is not asking for device control, return:
-  {"type":"chat","reply":"<normal short response>"}
+- If the user is not asking for device control, act as a friendly personal assistant. You can suggest movies, food, or answer general questions. Return: {"type":"chat","reply":"<your helpful response here>"}
 
 Supported devices and states:
 - white_light: on, off
@@ -272,9 +271,9 @@ ${trimmed}
         </div>
 
         {/* INPUT AREA - Rounded Bar Style */}
-        <div className="flex gap-3 bg-white/10 p-2 rounded-[2.5rem] border border-white/20 backdrop-blur-md shadow-2xl items-center">
+        <div className="flex gap-3 bg-white/10 p-2 rounded-[2.5rem] border border-white/10 backdrop-blur-md shadow-2xl items-center">
           <textarea
-            className="flex-1 bg-transparent px-6 py-2 text-white placeholder:text-white/30 outline-none font-medium resize-none max-h-32"
+            className="flex-1 bg-transparent px-4 py-2 text-white placeholder:text-white/30 outline-none font-medium resize-none max-h-32"
             rows={1}
             value={message}
             placeholder="Write a command or ask a question (e.g., 'Turn on the lights')..."
