@@ -7,10 +7,13 @@ import {
   FlatList,
   ActivityIndicator,
 } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Markdown from "react-native-markdown-display";
 import { updateDoc } from "firebase/firestore";
 import { getGeminiModel, db } from "../../utils/firebaseConfig";
 import { getArduinoDevicesDocRef } from "../../utils/firestorePaths";
+import { useGuest } from "../../utils/GuestContext";
+import { useAppTheme } from "../../utils/AppThemeContext";
 
 type Message = { id: string; text: string; sender: "user" | "ai" };
 
@@ -107,6 +110,8 @@ async function executeDeviceCommand(device: DeviceKey, state: DeviceState) {
 }
 
 export default function AiScreen() {
+  const { theme } = useAppTheme();
+  const { isGuest } = useGuest();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -241,8 +246,17 @@ Examples:
     }
   };
 
+  if (isGuest) {
+    return (
+      <View style={{ backgroundColor: theme.colors.background }} className="flex-1 px-6 py-8 items-center justify-center">
+        <MaterialCommunityIcons name="robot-confused" size={48} color={theme.colors.mutedText} />
+        <Text style={{ color: theme.colors.text }} className="mt-4 text-center">Guest mode cannot control devices. Sign in to use AI controls.</Text>
+      </View>
+    );
+  }
+
   return (
-    <View className="flex-1 bg-[#020617] p-4">
+    <View style={{ backgroundColor: theme.colors.background }} className="flex-1 p-4">
       <FlatList
         ref={listRef}
         data={messages}
@@ -252,61 +266,63 @@ Examples:
         contentContainerStyle={{ paddingBottom: 12 }}
         renderItem={({ item }) => (
           <View
+            style={{
+              backgroundColor:
+                item.sender === 'user' ? theme.colors.accent : theme.colors.surface,
+            }}
             className={`my-2 max-w-[85%] rounded-2xl p-3 ${
-              item.sender === "user"
-                ? "self-end bg-sky-600"
-                : "self-start bg-slate-800"
+              item.sender === "user" ? "self-end" : "self-start"
             }`}
           >
             {item.sender === "user" ? (
-              <Text className="text-white text-[15px]">{item.text}</Text>
+              <Text style={{ color: theme.colors.accentText }} className="text-[15px]">{item.text}</Text>
             ) : (
               <Markdown
                 style={{
-                  body: { color: "white", fontSize: 15 },
-                  paragraph: { color: "white", marginTop: 0, marginBottom: 8 },
-                  strong: { color: "white", fontWeight: "700" },
-                  em: { color: "white", fontStyle: "italic" },
+                  body: { color: theme.colors.text, fontSize: 15 },
+                  paragraph: { color: theme.colors.text, marginTop: 0, marginBottom: 8 },
+                  strong: { color: theme.colors.text, fontWeight: "700" },
+                  em: { color: theme.colors.text, fontStyle: "italic" },
                   heading1: {
-                    color: "white",
+                    color: theme.colors.text,
                     fontSize: 24,
                     fontWeight: "700",
                     marginBottom: 8,
                   },
                   heading2: {
-                    color: "white",
+                    color: theme.colors.text,
                     fontSize: 20,
                     fontWeight: "700",
                     marginBottom: 6,
                   },
-                  bullet_list: { color: "white" },
-                  ordered_list: { color: "white" },
-                  list_item: { color: "white" },
+                  bullet_list: { color: theme.colors.text },
+                  ordered_list: { color: theme.colors.text },
+                  list_item: { color: theme.colors.text },
                   code_inline: {
-                    backgroundColor: "#0f172a",
-                    color: "#7dd3fc",
+                    backgroundColor: theme.colors.backgroundAlt,
+                    color: theme.colors.accentText,
                     paddingHorizontal: 4,
                     paddingVertical: 2,
                     borderRadius: 6,
                   },
                   code_block: {
-                    backgroundColor: "#0f172a",
-                    color: "#7dd3fc",
+                    backgroundColor: theme.colors.backgroundAlt,
+                    color: theme.colors.accentText,
                     padding: 10,
                     borderRadius: 10,
                   },
                   fence: {
-                    backgroundColor: "#0f172a",
-                    color: "#7dd3fc",
+                    backgroundColor: theme.colors.backgroundAlt,
+                    color: theme.colors.accentText,
                     padding: 10,
                     borderRadius: 10,
                   },
-                  link: { color: "#38bdf8" },
+                  link: { color: theme.colors.accent },
                   blockquote: {
                     borderLeftWidth: 4,
-                    borderLeftColor: "#38bdf8",
+                    borderLeftColor: theme.colors.accent,
                     paddingLeft: 10,
-                    color: "#cbd5e1",
+                    color: theme.colors.mutedText,
                   },
                 }}
               >
@@ -322,31 +338,35 @@ Examples:
 
       {loading && (
         <View className="mb-4 ml-2 flex-row items-center">
-          <ActivityIndicator size="small" color="#0ea5e9" />
-          <Text className="ml-2 italic text-slate-500">
+          <ActivityIndicator size="small" color={theme.colors.accent} />
+          <Text style={{ color: theme.colors.mutedText }} className="ml-2 italic">
             House is thinking...
           </Text>
         </View>
       )}
 
-      <View className="flex-row items-center border-t border-slate-900 bg-[#020617] pt-4">
+      <View style={{ borderTopColor: theme.colors.border, backgroundColor: theme.colors.background }} className="flex-row items-center border-t pt-4">
         <TextInput
-          className="flex-1 rounded-2xl border border-slate-800 bg-slate-900 p-4 text-white"
+          style={{
+            backgroundColor: theme.colors.inputBackground,
+            borderColor: theme.colors.border,
+            color: theme.colors.text,
+          }}
+          className="flex-1 rounded-2xl border p-4"
           value={input}
           onChangeText={setInput}
           placeholder="Command your home..."
-          placeholderTextColor="#64748b"
+          placeholderTextColor={theme.colors.subtleText}
           editable={!loading}
           multiline
         />
         <TouchableOpacity
           onPress={handleSend}
           disabled={loading || !input.trim()}
-          className={`ml-3 rounded-2xl p-4 ${
-            loading || !input.trim() ? "bg-slate-800" : "bg-sky-500"
-          }`}
+          style={{ backgroundColor: loading || !input.trim() ? theme.colors.surfaceStrong : theme.colors.accent }}
+          className="ml-3 rounded-2xl p-4"
         >
-          <Text className="font-bold text-white">Send</Text>
+          <Text style={{ color: theme.colors.accentText }} className="font-bold">Send</Text>
         </TouchableOpacity>
       </View>
     </View>

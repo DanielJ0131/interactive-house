@@ -41,6 +41,8 @@ function VoiceTile() {
     );
 }
 
+
+
 function DeviceCard({
     icon,
     title,

@@ -13,9 +13,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
-import { onSnapshot, updateDoc } from 'firebase/firestore';
+import { onSnapshot, updateDoc, doc, getDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '../../utils/firebaseConfig';
 import { ARDUINO_DOC_ID, getArduinoDevicesDocRef } from '../../utils/firestorePaths';
+import { useAppTheme } from '../../utils/AppThemeContext';
+import { useGuest } from '../../utils/GuestContext';
 
 type DeviceState = 'on' | 'off' | 'open' | 'closed';
 
@@ -168,17 +171,76 @@ const AnimatedFanIcon = memo(
   }
 );
 
+const MOCK_GUEST_DEVICES: DevicesDoc = {
+  white_light: { pin: 'D13', state: 'off', value: null },
+  orange_light: { pin: 'D12', state: 'off', value: null },
+  fan_INA: { pin: 'D9', state: 'off', value: null },
+  fan_INB: { pin: 'D8', state: 'off', value: null },
+  door: { pin: 'D7', state: 'closed', value: null },
+  window: { pin: 'D6', state: 'closed', value: null },
+  buzzer: { pin: 'D5', state: 'off', value: null },
+  yellow_led: { value: 0 },
+  telemetry: { steam: 0, motion: 0, gas: 0 },
+  sync: {
+    lastSource: 'Guest Demo',
+    lastUpdatedAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
+  },
+};
+
 export default function DatabaseScreen() {
+  const { theme } = useAppTheme();
+  const { isGuest } = useGuest();
   const [deviceData, setDeviceData] = useState<DevicesDoc | null>(null);
+  const [guestDeviceData, setGuestDeviceData] = useState<DevicesDoc>(MOCK_GUEST_DEVICES);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isReversingFan, setIsReversingFan] = useState(false);
   const [yellowLedPercent, setYellowLedPercent] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
   const user = auth.currentUser;
 
   const yellowLedRaw = Number(deviceData?.yellow_led?.value ?? 0);
 
+  // Check user admin role
   useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        setIsAdmin(false);
+        return;
+      }
+
+      const userDocRefs = [
+        user.email ? doc(db, 'users', user.email) : null,
+        doc(db, 'users', user.uid),
+      ].filter(Boolean) as ReturnType<typeof doc>[];
+
+      (async () => {
+        try {
+          for (const userDocRef of userDocRefs) {
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists() && userDocSnap.data()?.role === 'admin') {
+              setIsAdmin(true);
+              return;
+            }
+          }
+          setIsAdmin(false);
+        } catch (error) {
+          console.error('Error resolving user role:', error);
+          setIsAdmin(false);
+        }
+      })();
+    });
+
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (isGuest) {
+      setDeviceData(guestDeviceData);
+      setLoading(false);
+      return;
+    }
+
     const docRef = getArduinoDevicesDocRef(db);
 
     const unsubscribeData = onSnapshot(
@@ -200,7 +262,7 @@ export default function DatabaseScreen() {
     );
 
     return () => unsubscribeData();
-  }, []);
+  }, [isGuest, guestDeviceData]);
 
   useEffect(() => {
     const clampedRaw = Math.max(0, Math.min(255, Number.isFinite(yellowLedRaw) ? yellowLedRaw : 0));
@@ -209,12 +271,43 @@ export default function DatabaseScreen() {
 
   const toggleDevice = useCallback(
     async (deviceName: DeviceKey) => {
-      const currentDevice = deviceData?.[deviceName] as HardwareDevice | undefined;
+      const currentDevice = (isGuest ? guestDeviceData : deviceData)?.[deviceName] as HardwareDevice | undefined;
       if (!currentDevice) return;
 
       const currentState = currentDevice.state;
 
       try {
+        if (isGuest) {
+          // Guest mode: update local state only
+          setGuestDeviceData((prev) => {
+            const updated = { ...prev };
+            if (deviceName === 'fan_INA') {
+              const isFanOn = prev.fan_INA?.state === 'on' || prev.fan_INB?.state === 'on';
+              if (!isFanOn) {
+                if (updated.fan_INA) updated.fan_INA.state = 'on';
+                if (updated.fan_INB) updated.fan_INB.state = 'off';
+              } else {
+                if (updated.fan_INA) updated.fan_INA.state = 'off';
+                if (updated.fan_INB) updated.fan_INB.state = 'off';
+              }
+            } else {
+              const device = updated[deviceName] as HardwareDevice | undefined;
+              if (device) {
+                device.state =
+                  currentState === 'on' || currentState === 'open'
+                    ? deviceName === 'door' || deviceName === 'window'
+                      ? 'closed'
+                      : 'off'
+                    : deviceName === 'door' || deviceName === 'window'
+                      ? 'open'
+                      : 'on';
+              }
+            }
+            return updated;
+          });
+          return;
+        }
+
         const docRef = getArduinoDevicesDocRef(db);
         if (deviceName === 'fan_INA') {
           // Fan card acts as a simple power toggle:
@@ -250,7 +343,7 @@ export default function DatabaseScreen() {
         Alert.alert('Toggle Error', message);
       }
     },
-    [deviceData]
+    [isGuest, deviceData, guestDeviceData]
   );
 
   const reverseFan = useCallback(async () => {
@@ -258,8 +351,39 @@ export default function DatabaseScreen() {
 
     setIsReversingFan(true);
     try {
+      const currentData = isGuest ? guestDeviceData : deviceData;
+      const isCurrentlyReverse = currentData?.fan_INB?.state === 'on';
+
+      if (isGuest) {
+        // Guest mode: update local state only
+        setGuestDeviceData((prev) => {
+          const updated = { ...prev };
+          if (isCurrentlyReverse) {
+            if (updated.fan_INB) updated.fan_INB.state = 'off';
+            setTimeout(() => {
+              setGuestDeviceData((prev2) => {
+                const updated2 = { ...prev2 };
+                if (updated2.fan_INA) updated2.fan_INA.state = 'on';
+                return updated2;
+              });
+            }, 2000);
+          } else {
+            if (updated.fan_INA) updated.fan_INA.state = 'off';
+            setTimeout(() => {
+              setGuestDeviceData((prev2) => {
+                const updated2 = { ...prev2 };
+                if (updated2.fan_INB) updated2.fan_INB.state = 'on';
+                return updated2;
+              });
+            }, 2000);
+          }
+          return updated;
+        });
+        setIsReversingFan(false);
+        return;
+      }
+
       const docRef = getArduinoDevicesDocRef(db);
-      const isCurrentlyReverse = deviceData?.fan_INB?.state === 'on';
 
       if (isCurrentlyReverse) {
         await updateDoc(docRef, {
@@ -288,14 +412,23 @@ export default function DatabaseScreen() {
     } finally {
       setIsReversingFan(false);
     }
-  }, [deviceData, isReversingFan]);
+  }, [isGuest, deviceData, guestDeviceData, isReversingFan]);
 
   const updateYellowLed = useCallback(async (percent: number) => {
     try {
-      const docRef = getArduinoDevicesDocRef(db);
       const clampedPercent = Math.max(0, Math.min(100, percent));
       const rawValue = Math.round((clampedPercent / 100) * 255);
 
+      if (isGuest) {
+        // Guest mode: update local state only
+        setGuestDeviceData((prev) => ({
+          ...prev,
+          yellow_led: { value: rawValue },
+        }));
+        return;
+      }
+
+      const docRef = getArduinoDevicesDocRef(db);
       await updateDoc(docRef, {
         'yellow_led.value': rawValue,
       });
@@ -303,55 +436,58 @@ export default function DatabaseScreen() {
       const message = err instanceof Error ? err.message : 'Unknown error';
       Alert.alert('Yellow LED Error', message);
     }
-  }, []);
+  }, [isGuest]);
 
   if (loading) {
     return (
-      <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: '#020617' }}>
+      <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: theme.colors.background }}>
         <View style={{ flex: 1, justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#0ea5e9" />
+          <ActivityIndicator size="large" color={theme.colors.accent} />
         </View>
       </SafeAreaView>
     );
   }
 
-  const lastUpdatedAt = formatTimestamp(deviceData?.sync?.lastUpdatedAt);
+  const displayData = isGuest ? guestDeviceData : deviceData;
+  const lastUpdatedAt = formatTimestamp(displayData?.sync?.lastUpdatedAt);
 
   return (
-    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: '#020617' }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <ScrollView contentContainerStyle={{ padding: 24 }} showsVerticalScrollIndicator={false}>
         <View className="mb-8 mt-4">
-          <Text className="text-white text-4xl font-extrabold tracking-tight">
-            {user?.displayName ? `${user.displayName}'s Home` : 'Database'}
+          <Text style={{ color: theme.colors.text }} className="text-4xl font-extrabold tracking-tight">
+            {isGuest ? 'Guest Home' : user?.displayName ? `${user.displayName}'s Home` : 'Database'}
           </Text>
-          <Text className="text-slate-500 text-lg font-medium">Live Hardware Control</Text>
+          <Text style={{ color: theme.colors.mutedText }} className="text-lg font-medium">
+            {isGuest ? 'Demo Hardware Control' : 'Live Hardware Control'}
+          </Text>
         </View>
 
         {error && (
-          <View className="bg-red-500/10 border border-red-500/30 p-4 rounded-3xl mb-6">
-            <Text className="text-red-400 font-medium">{error}</Text>
+          <View style={{ backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger }} className="border p-4 rounded-3xl mb-6">
+            <Text style={{ color: theme.colors.danger }} className="font-medium">{error}</Text>
           </View>
         )}
 
-        <Text className="text-sky-500 text-xs font-black uppercase tracking-[2px] mb-4 ml-2">
+        <Text style={{ color: theme.colors.accent }} className="text-xs font-black uppercase tracking-[2px] mb-4 ml-2">
           Actuators
         </Text>
 
-        {deviceData &&
+        {displayData &&
           DEVICE_CONFIG.map((device) => {
             const data =
               device.key === 'fan_INA'
                 ? {
-                    pin: `${deviceData.fan_INA?.pin ?? '-'} / ${deviceData.fan_INB?.pin ?? '-'}`,
+                    pin: `${displayData.fan_INA?.pin ?? '-'} / ${displayData.fan_INB?.pin ?? '-'}`,
                     state:
-                      deviceData.fan_INA?.state === 'on'
+                      displayData.fan_INA?.state === 'on'
                         ? 'forward'
-                        : deviceData.fan_INB?.state === 'on'
+                        : displayData.fan_INB?.state === 'on'
                           ? 'reverse'
                           : 'off',
                     value: null,
                   }
-                : deviceData[device.key];
+                : displayData[device.key];
             if (!data) return null;
 
             return (
@@ -375,9 +511,9 @@ export default function DatabaseScreen() {
           onSlidingComplete={updateYellowLed}
         />
 
-        {deviceData?.telemetry && (
+        {displayData?.telemetry && (
           <>
-            <Text className="text-purple-500 text-xs font-black uppercase tracking-[2px] mt-8 mb-4 ml-2">
+            <Text style={{ color: theme.colors.secondaryAccent }} className="text-xs font-black uppercase tracking-[2px] mt-8 mb-4 ml-2">
               Sensors
             </Text>
 
@@ -387,7 +523,7 @@ export default function DatabaseScreen() {
                   key={sensor.key}
                   label={sensor.label}
                   icon={sensor.icon}
-                  value={deviceData.telemetry?.[sensor.key] ?? 0}
+                  value={displayData.telemetry?.[sensor.key] ?? 0}
                   activeText="Detected"
                   inactiveText="Clear"
                 />
@@ -396,44 +532,48 @@ export default function DatabaseScreen() {
           </>
         )}
 
-        {deviceData?.sync && (
+        {!isGuest && displayData?.sync && (
           <>
-            <Text className="text-emerald-500 text-xs font-black uppercase tracking-[2px] mt-8 mb-4 ml-2">
+            <Text style={{ color: theme.colors.success }} className="text-xs font-black uppercase tracking-[2px] mt-8 mb-4 ml-2">
               Sync Status
             </Text>
 
-            <View className="bg-slate-900/40 border border-slate-800/60 p-5 rounded-3xl mb-4">
+            <View style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }} className="border p-5 rounded-3xl mb-4">
               <View className="flex-row items-center mb-4">
-                <View className="h-12 w-12 rounded-2xl bg-emerald-500/10 items-center justify-center mr-4">
-                  <MaterialCommunityIcons name="sync" size={24} color="#10b981" />
+                <View style={{ backgroundColor: theme.colors.successSoft }} className="h-12 w-12 rounded-2xl items-center justify-center mr-4">
+                  <MaterialCommunityIcons name="sync" size={24} color={theme.colors.success} />
                 </View>
                 <View>
-                  <Text className="text-white text-lg font-bold">Arduino Sync</Text>
-                  <Text className="text-slate-500 text-xs font-mono">{ARDUINO_DOC_ID}</Text>
+                  <Text style={{ color: theme.colors.text }} className="text-lg font-bold">Arduino Sync</Text>
+                  <Text style={{ color: theme.colors.mutedText }} className="text-xs font-mono">{isGuest ? 'Guest Demo' : ARDUINO_DOC_ID}</Text>
                 </View>
               </View>
 
-              <InfoRow label="Last Source" value={deviceData.sync.lastSource || 'Unknown'} />
+              <InfoRow label="Last Source" value={displayData.sync.lastSource || 'Unknown'} />
               <InfoRow label="Last Updated" value={lastUpdatedAt} />
             </View>
           </>
         )}
 
-        <Text className="text-slate-400 text-xs font-black uppercase tracking-[2px] mt-8 mb-4 ml-2">
-          Database Debug
-        </Text>
+        {!isGuest && isAdmin && (
+          <>
+            <Text style={{ color: theme.colors.subtleText }} className="text-xs font-black uppercase tracking-[2px] mt-8 mb-4 ml-2">
+              Database Debug
+            </Text>
 
-        <View className="bg-slate-900/40 border border-slate-800/60 p-5 rounded-3xl mb-8">
-          <Text
-            style={{
-              color: '#4ade80',
-              fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-              fontSize: 11,
-            }}
-          >
-            {JSON.stringify(deviceData, null, 2)}
-          </Text>
-        </View>
+            <View style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }} className="border p-5 rounded-3xl mb-8">
+              <Text
+                style={{
+                  color: theme.colors.success,
+                  fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+                  fontSize: 11,
+                }}
+              >
+                {JSON.stringify(displayData, null, 2)}
+              </Text>
+            </View>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -448,34 +588,31 @@ function YellowLedCard({
   onChange: (value: number) => void;
   onSlidingComplete: (value: number) => void;
 }) {
+  const { theme } = useAppTheme();
   const levelLabel = `${Math.round(percent)}%`;
-  const iconOpacity = 0.2 + (Math.max(0, Math.min(100, percent)) / 100) * 0.8;
 
   return (
     <View
       style={{
-        borderColor: 'rgba(250, 204, 21, 0.35)',
-        backgroundColor: 'rgba(250, 204, 21, 0.06)',
+        borderColor: percent === 100 ? theme.colors.accent : theme.colors.border,
+        backgroundColor: percent === 100 ? theme.colors.accentSoft : theme.colors.surface,
       }}
       className="border p-5 rounded-3xl mb-3"
     >
       <View className="flex-row justify-between items-center mb-4">
         <View className="flex-row items-center flex-1">
-          <View
-            style={{ opacity: iconOpacity }}
-            className="h-14 w-14 rounded-2xl items-center justify-center mr-4 bg-amber-500/15"
-          >
-            <MaterialCommunityIcons name="lightbulb-on-outline" size={26} color="#facc15" />
+          <View style={{ backgroundColor: percent > 0 ? theme.colors.accentSoft : theme.colors.secondaryAccentSoft }} className="h-14 w-14 rounded-2xl items-center justify-center mr-4">
+            <MaterialCommunityIcons name="lightbulb-on-outline" size={26} color={percent > 0 ? theme.colors.accent : theme.colors.subtleText} />
           </View>
 
           <View className="flex-1">
-            <Text className="text-white text-lg font-bold">Yellow LED</Text>
-            <Text className="text-slate-400 text-xs font-medium mt-1">Brightness</Text>
+            <Text style={{ color: theme.colors.text }} className="text-lg font-bold">Yellow LED</Text>
+            <Text style={{ color: theme.colors.mutedText }} className="text-xs font-medium mt-1">Brightness</Text>
           </View>
         </View>
 
-        <View className="px-3 py-2 rounded-2xl border bg-amber-500/20 border-amber-500/50">
-          <Text className="text-[10px] font-black uppercase tracking-widest text-amber-200">
+        <View style={{ backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accent }} className="px-3 py-2 rounded-2xl border">
+          <Text style={{ color: theme.colors.accent }} className="text-[10px] font-black uppercase tracking-widest">
             {levelLabel}
           </Text>
         </View>
@@ -486,9 +623,9 @@ function YellowLedCard({
         minimumValue={0}
         maximumValue={100}
         step={1}
-        minimumTrackTintColor="#facc15"
-        maximumTrackTintColor="#334155"
-        thumbTintColor="#facc15"
+        minimumTrackTintColor={theme.colors.accent}
+        maximumTrackTintColor={theme.colors.borderStrong}
+        thumbTintColor={theme.colors.accent}
         onValueChange={onChange}
         onSlidingComplete={onSlidingComplete}
       />
@@ -504,10 +641,11 @@ function formatTimestamp(timestamp?: { seconds?: number; nanoseconds?: number })
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
+  const { theme } = useAppTheme();
   return (
     <View className="mb-3">
-      <Text className="text-slate-500 text-xs font-black uppercase tracking-widest">{label}</Text>
-      <Text className="text-white text-base font-semibold mt-1">{value}</Text>
+      <Text style={{ color: theme.colors.subtleText }} className="text-xs font-black uppercase tracking-widest">{label}</Text>
+      <Text style={{ color: theme.colors.text }} className="text-base font-semibold mt-1">{value}</Text>
     </View>
   );
 }
@@ -525,44 +663,42 @@ function TelemetryCard({
   activeText: string;
   inactiveText: string;
 }) {
+  const { theme } = useAppTheme();
   const isActive = value > 2;
 
   return (
     <View
-      style={{ flexBasis: '48%' }}
-      className={`p-5 rounded-3xl mb-4 border ${
-        isActive
-          ? 'bg-red-500/10 border-red-500/30'
-          : 'bg-slate-900/40 border-slate-800/60'
-      }`}
+      style={{
+        flexBasis: '48%',
+        backgroundColor: isActive ? theme.colors.dangerSoft : theme.colors.surface,
+        borderColor: isActive ? theme.colors.danger : theme.colors.border,
+      }}
+      className="p-5 rounded-3xl mb-4 border"
     >
       <View
-        className={`h-10 w-10 rounded-xl items-center justify-center mb-3 ${
-          isActive ? 'bg-red-500/10' : 'bg-purple-500/10'
-        }`}
+        style={{ backgroundColor: isActive ? theme.colors.dangerSoft : theme.colors.secondaryAccentSoft }}
+        className="h-10 w-10 rounded-xl items-center justify-center mb-3"
       >
         <MaterialCommunityIcons
           name={icon}
           size={20}
-          color={isActive ? '#f87171' : '#a855f7'}
+          color={isActive ? theme.colors.danger : theme.colors.secondaryAccent}
         />
       </View>
 
-      <Text className="text-white font-bold" numberOfLines={1}>
+      <Text style={{ color: theme.colors.text }} className="font-bold" numberOfLines={1}>
         {label}
       </Text>
-      <Text className="text-slate-500 text-xs font-mono mt-1">Raw: {value}</Text>
+      <Text style={{ color: theme.colors.mutedText }} className="text-xs font-mono mt-1">Raw: {value}</Text>
 
       <View
-        className={`self-start mt-3 px-3 py-1.5 rounded-full border ${
-          isActive
-            ? 'bg-red-500/20 border-red-500/40'
-            : 'bg-slate-800 border-slate-700'
-        }`}
+        style={{
+          backgroundColor: isActive ? theme.colors.dangerSoft : theme.colors.chipBackground,
+          borderColor: isActive ? theme.colors.danger : theme.colors.border,
+        }}
+        className="self-start mt-3 px-3 py-1.5 rounded-full border"
       >
-        <Text className={`text-[10px] font-black uppercase tracking-widest ${
-          isActive ? 'text-red-300' : 'text-slate-400'
-        }`}>
+        <Text style={{ color: isActive ? theme.colors.danger : theme.colors.mutedText }} className="text-[10px] font-black uppercase tracking-widest">
           {isActive ? activeText : inactiveText}
         </Text>
       </View>
@@ -589,6 +725,7 @@ function DeviceCard({
   reverseSpin?: boolean;
   disabled?: boolean;
 }) {
+  const { theme } = useAppTheme();
   const isActive =
     data.state === 'on' ||
     data.state === 'open' ||
@@ -601,8 +738,8 @@ function DeviceCard({
     <Pressable
       onPress={isDisabled ? undefined : onToggle}
       style={{
-        borderColor: isActive ? 'rgba(14, 165, 233, 0.35)' : '#1e293b',
-        backgroundColor: isActive ? 'rgba(14, 165, 233, 0.05)' : 'rgba(15, 23, 42, 0.4)',
+        borderColor: isActive ? theme.colors.accent : theme.colors.border,
+        backgroundColor: isActive ? theme.colors.accentSoft : theme.colors.surface,
         opacity: isDisabled ? 0.8 : 1,
       }}
       className="border p-5 rounded-3xl mb-3"
@@ -610,29 +747,28 @@ function DeviceCard({
       <View className="flex-row justify-between items-center">
         <View className="flex-row items-center flex-1">
           <View
-            className={`h-14 w-14 rounded-2xl items-center justify-center mr-4 ${
-              isActive ? 'bg-sky-500/10' : 'bg-slate-800/40'
-            }`}
+            style={{ backgroundColor: isActive ? theme.colors.accentSoft : theme.colors.secondaryAccentSoft }}
+            className="h-14 w-14 rounded-2xl items-center justify-center mr-4"
           >
             {isFan ? (
               <AnimatedFanIcon
                 speed={isActive ? 100 : 0}
                 direction={reverseSpin}
-                color={isActive ? '#38bdf8' : '#475569'}
+                color={isActive ? theme.colors.accent : theme.colors.subtleText}
               />
             ) : (
               <MaterialCommunityIcons
                 name={icon}
                 size={26}
-                color={isActive ? '#38bdf8' : '#475569'}
+                color={isActive ? theme.colors.accent : theme.colors.subtleText}
               />
             )}
           </View>
 
           <View className="flex-1">
-            <Text className="text-white text-lg font-bold">{name}</Text>
+            <Text style={{ color: theme.colors.text }} className="text-lg font-bold">{name}</Text>
             {disabled && (
-              <Text className="text-amber-400 text-[10px] font-black uppercase tracking-widest mt-2">
+              <Text style={{ color: theme.colors.warning }} className="text-[10px] font-black uppercase tracking-widest mt-2">
                 Read Only
               </Text>
             )}
@@ -640,37 +776,29 @@ function DeviceCard({
         </View>
 
         <View
-          className={`px-3 py-2 rounded-2xl border ${
-            isActive
-              ? 'bg-sky-500/20 border-sky-500/50'
-              : 'bg-slate-800 border-slate-700'
-          }`}
+          style={{
+            backgroundColor: isActive ? theme.colors.accentSoft : theme.colors.chipBackground,
+            borderColor: isActive ? theme.colors.accent : theme.colors.border,
+          }}
+          className="px-3 py-2 rounded-2xl border"
         >
-          <Text
-            className={`text-[10px] font-black uppercase tracking-widest ${
-              isActive ? 'text-sky-300' : 'text-slate-400'
-            }`}
-          >
+          <Text style={{ color: isActive ? theme.colors.accentText : theme.colors.mutedText }} className="text-[10px] font-black uppercase tracking-widest">
             {data.state}
           </Text>
         </View>
       </View>
 
       {onReverse && (
-        <View className="mt-4 pt-4 border-t border-slate-800/70">
+        <View style={{ borderTopColor: theme.colors.border }} className="mt-4 pt-4 border-t">
           <Pressable
             onPress={reversing ? undefined : onReverse}
-            className={`self-start px-4 py-2 rounded-xl border ${
-              reversing
-                ? 'bg-slate-800 border-slate-700'
-                : 'bg-amber-500/10 border-amber-500/40 active:bg-amber-500/20'
-            }`}
+            style={{
+              backgroundColor: reversing ? theme.colors.chipBackground : theme.colors.accentSoft,
+              borderColor: reversing ? theme.colors.border : theme.colors.accent,
+            }}
+            className="self-start px-4 py-2 rounded-xl border"
           >
-            <Text
-              className={`text-[10px] font-black uppercase tracking-widest ${
-                reversing ? 'text-slate-400' : 'text-amber-300'
-              }`}
-            >
+            <Text style={{ color: reversing ? theme.colors.mutedText : theme.colors.accent }} className="text-[10px] font-black uppercase tracking-widest">
               {reversing ? 'Reversing...' : 'Reverse'}
             </Text>
           </Pressable>

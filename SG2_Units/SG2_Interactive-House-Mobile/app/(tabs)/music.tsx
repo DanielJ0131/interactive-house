@@ -13,6 +13,7 @@ import {
   type AudioContextType,
   type InstrumentOption,
 } from '../../utils/musicAudio';
+import { useAppTheme } from '../../utils/AppThemeContext';
 
 interface Melody {
   id: string;
@@ -23,6 +24,7 @@ interface Melody {
 }
 
 export default function MusicScreen() {
+  const { theme } = useAppTheme();
   const speedOptions = [0.5, 1, 1.5, 2];
   const instrumentOptions: InstrumentOption[] = ['square', 'sawtooth', 'electric piano'];
   const { isGuest } = useGuest();
@@ -601,20 +603,28 @@ export default function MusicScreen() {
       onPress={() => {
         void handleSelectMelody(item);
       }}
-      className={`relative w-44 p-4 rounded-2xl mr-3 border ${
-        selectedMelody?.id === item.id
-          ? 'bg-sky-500 border-sky-300'
-          : 'bg-slate-800 border-slate-700'
-      }`}
+      style={{
+        backgroundColor:
+          selectedMelody?.id === item.id ? theme.colors.selectedSurface : theme.colors.surface,
+        borderColor:
+          selectedMelody?.id === item.id ? theme.colors.selectedBorder : theme.colors.border,
+      }}
+      className="relative w-44 p-4 rounded-2xl mr-3 border"
     >
-      <Text className="text-white font-semibold" numberOfLines={1}>{item.name}</Text>
-      <Text className="text-slate-200 text-sm" numberOfLines={1}>{item.artist}</Text>
-      <Text className="text-slate-300 text-xs mt-1">
+      <Text style={{ color: theme.colors.text }} className="font-semibold" numberOfLines={1}>
+        {item.name}
+      </Text>
+      <Text style={{ color: theme.colors.mutedText }} className="text-sm" numberOfLines={1}>
+        {item.artist}
+      </Text>
+      <Text style={{ color: theme.colors.subtleText }} className="text-xs mt-1">
         {item.frequencies.length} notes
       </Text>
       {selectedMelody?.id === item.id && (
-        <View className="mt-3 bg-white/20 rounded-lg px-2 py-1 self-start">
-          <Text className="text-white text-[10px] font-semibold">SELECTED</Text>
+        <View style={{ backgroundColor: theme.colors.accentSoft }} className="mt-3 rounded-lg px-2 py-1 self-start">
+          <Text style={{ color: theme.colors.accentText }} className="text-[10px] font-semibold">
+            SELECTED
+          </Text>
         </View>
       )}
 
@@ -625,14 +635,16 @@ export default function MusicScreen() {
             handleDeleteMelody(item);
           }}
           disabled={Boolean(deletingMelodyId)}
-          className={`absolute top-2 right-2 z-10 h-6 w-6 rounded-full items-center justify-center ${
-            deletingMelodyId === item.id ? 'bg-slate-700' : 'bg-red-500'
-          }`}
+          style={{
+            backgroundColor:
+              deletingMelodyId === item.id ? theme.colors.surfaceStrong : theme.colors.danger,
+          }}
+          className="absolute top-2 right-2 z-10 h-6 w-6 rounded-full items-center justify-center"
         >
           {deletingMelodyId === item.id ? (
-            <ActivityIndicator size="small" color="#ffffff" />
+            <ActivityIndicator size="small" color={theme.colors.text} />
           ) : (
-            <MaterialCommunityIcons name="close" size={14} color="#ffffff" />
+            <MaterialCommunityIcons name="close" size={14} color={theme.colors.text} />
           )}
         </Pressable>
       )}
@@ -641,33 +653,24 @@ export default function MusicScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-slate-950 px-6 py-8 items-center justify-center">
-        <ActivityIndicator size="large" color="#0ea5e9" />
-        <Text className="text-slate-400 mt-4">Loading melodies...</Text>
+      <View style={{ backgroundColor: theme.colors.background }} className="flex-1 px-6 py-8 items-center justify-center">
+        <ActivityIndicator size="large" color={theme.colors.accent} />
+        <Text style={{ color: theme.colors.mutedText }} className="mt-4">Loading melodies...</Text>
       </View>
     );
   }
 
   if (loadError) {
     return (
-      <View className="flex-1 bg-slate-950 px-6 py-8 items-center justify-center">
-        <MaterialCommunityIcons name="music-note-off" size={48} color="#94a3b8" />
-        <Text className="text-slate-300 mt-4 text-center">{loadError}</Text>
-        <Text className="text-slate-500 mt-3 text-xs text-center">
-          Auth ready: {isAuthReady ? 'yes' : 'no'} | Authenticated: {isAuthenticated ? 'yes' : 'no'}
-        </Text>
-        <Text className="text-slate-500 mt-1 text-xs text-center">
-          User: {activeUserEmail}
-        </Text>
-        <Text className="text-slate-500 mt-1 text-xs text-center">
-          Project: {activeProjectId}
-        </Text>
+      <View style={{ backgroundColor: theme.colors.background }} className="flex-1 px-6 py-8 items-center justify-center">
+        <MaterialCommunityIcons name="music-note-off" size={48} color={theme.colors.mutedText} />
+        <Text style={{ color: theme.colors.text }} className="mt-4 text-center">{loadError}</Text>
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-slate-950">
+    <View style={{ backgroundColor: theme.colors.background }} className="flex-1">
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
@@ -677,59 +680,64 @@ export default function MusicScreen() {
           paddingBottom: 48,
         }}
       >
-      <Text className="text-white text-3xl font-bold mb-2">Music Player</Text>
-      <Text className="text-slate-400 mb-6">
+      <Text style={{ color: theme.colors.text }} className="text-3xl font-bold mb-2">Music Player</Text>
+      <Text style={{ color: theme.colors.mutedText }} className="mb-6">
         {melodies.length > 0
           ? 'Select and play melodies'
           : 'No melodies available'}
       </Text>
 
       {isAdmin && (
-        <View className="bg-slate-900 rounded-2xl p-4 border border-slate-800 mb-4">
+        <View style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }} className="rounded-2xl p-4 border mb-4">
           <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-white text-base font-semibold">Add Melody</Text>
+            <Text style={{ color: theme.colors.text }} className="text-base font-semibold">Add Melody</Text>
           </View>
           <TextInput
             value={newMelodyName}
             onChangeText={setNewMelodyName}
             editable={!isSavingMelody}
             placeholder="Melody name"
-            placeholderTextColor="#64748b"
-            className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-white mb-2"
+            placeholderTextColor={theme.colors.subtleText}
+            style={{ backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border, color: theme.colors.text }}
+            className="border rounded-xl px-3 py-3 mb-2"
           />
           <TextInput
             value={newMelodyArtist}
             onChangeText={setNewMelodyArtist}
             editable={!isSavingMelody}
             placeholder="Artist (optional)"
-            placeholderTextColor="#64748b"
-            className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-white mb-2"
+            placeholderTextColor={theme.colors.subtleText}
+            style={{ backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border, color: theme.colors.text }}
+            className="border rounded-xl px-3 py-3 mb-2"
           />
           <TextInput
             value={newMelodyFrequencies}
             onChangeText={setNewMelodyFrequencies}
             editable={!isSavingMelody}
             placeholder="Frequencies (0 for silent), e.g. 262, 294, 0, 330"
-            placeholderTextColor="#64748b"
-            className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-white mb-3"
+            placeholderTextColor={theme.colors.subtleText}
+            style={{ backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border, color: theme.colors.text }}
+            className="border rounded-xl px-3 py-3 mb-3"
           />
           <TextInput
             value={newMelodyDelays}
             onChangeText={setNewMelodyDelays}
             editable={!isSavingMelody}
             placeholder="Arduino delays (ms), e.g. 500, 500, 250, 750"
-            placeholderTextColor="#64748b"
-            className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-white mb-3"
+            placeholderTextColor={theme.colors.subtleText}
+            style={{ backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border, color: theme.colors.text }}
+            className="border rounded-xl px-3 py-3 mb-3"
           />
           <Pressable
             onPress={handleAddMelody}
             disabled={isSavingMelody}
-            className={`rounded-xl py-3 items-center ${isSavingMelody ? 'bg-slate-700' : 'bg-emerald-500'}`}
+            style={{ backgroundColor: isSavingMelody ? theme.colors.surfaceStrong : theme.colors.accent }}
+            className="rounded-xl py-3 items-center"
           >
             {isSavingMelody ? (
-              <ActivityIndicator color="#ffffff" />
+              <ActivityIndicator color={theme.colors.text} />
             ) : (
-              <Text className="font-semibold text-white">Save Melody</Text>
+              <Text style={{ color: theme.colors.text }} className="font-semibold">Save Melody</Text>
             )}
           </Pressable>
         </View>
@@ -739,7 +747,7 @@ export default function MusicScreen() {
         <>
           {/* Melody quick-swap picker */}
           <View className="mb-5">
-            <Text className="text-white text-lg font-semibold mb-3">Tap to Swap Melody</Text>
+            <Text style={{ color: theme.colors.text }} className="text-lg font-semibold mb-3">Tap to Swap Melody</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -751,26 +759,26 @@ export default function MusicScreen() {
 
           {/* Current Melody Display */}
           {selectedMelody && (
-            <View className="bg-slate-900 rounded-3xl p-6 border border-slate-800 mb-5">
-              <Text className="text-white text-xl font-semibold mb-2">
+            <View style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }} className="rounded-3xl p-6 border mb-5">
+              <Text style={{ color: theme.colors.text }} className="text-xl font-semibold mb-2">
                 Current Melody
               </Text>
-              <Text className="text-sky-400 font-bold text-lg mb-1">
+              <Text style={{ color: theme.colors.accent }} className="font-bold text-lg mb-1">
                 {selectedMelody.name}
               </Text>
-              <Text className="text-slate-400 mb-4">
+              <Text style={{ color: theme.colors.mutedText }} className="mb-4">
                 {selectedMelody.artist}
               </Text>
-              <Text className="text-slate-500 text-sm">
+              <Text style={{ color: theme.colors.subtleText }} className="text-sm">
                 Frequencies (Hz):
               </Text>
-              <Text className="text-slate-500 text-sm" style={{ fontFamily: monospaceFont }}>
+              <Text style={{ color: theme.colors.subtleText, fontFamily: monospaceFont }} className="text-sm">
                 {selectedAlignedSequences?.frequenciesText}
               </Text>
               {isAdmin && selectedMelody.noteDelays && selectedMelody.noteDelays.length > 0 && (
                 <>
-                  <Text className="text-slate-500 text-sm mt-2">Delays (ms):</Text>
-                  <Text className="text-slate-500 text-sm" style={{ fontFamily: monospaceFont }}>
+                  <Text style={{ color: theme.colors.subtleText }} className="text-sm mt-2">Delays (ms):</Text>
+                  <Text style={{ color: theme.colors.subtleText, fontFamily: monospaceFont }} className="text-sm">
                     {selectedAlignedSequences?.delaysText}
                   </Text>
                 </>
@@ -780,47 +788,49 @@ export default function MusicScreen() {
                 <View className="mt-5">
                   <Pressable
                     onPress={() => setIsEditPanelOpen((prev) => !prev)}
-                    className="bg-slate-950 border border-slate-700 rounded-2xl px-4 py-3 flex-row items-center justify-between"
+                    style={{ backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border }}
+                    className="border rounded-2xl px-4 py-3 flex-row items-center justify-between"
                   >
-                    <Text className="text-white text-sm font-semibold">
+                    <Text style={{ color: theme.colors.text }} className="text-sm font-semibold">
                       Edit Frequencies / Delays
                     </Text>
                     <MaterialCommunityIcons
                       name={isEditPanelOpen ? 'chevron-up' : 'chevron-down'}
                       size={20}
-                      color="#cbd5e1"
+                      color={theme.colors.mutedText}
                     />
                   </Pressable>
 
                   {isEditPanelOpen && (
-                    <View className="mt-2 bg-slate-950 border border-slate-700 rounded-2xl p-4">
+                    <View style={{ backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border }} className="mt-2 border rounded-2xl p-4">
                       <TextInput
                         value={editMelodyFrequencies}
                         onChangeText={setEditMelodyFrequencies}
                         editable={!isUpdatingMelody}
                         placeholder="Frequencies (0 for silent), e.g. 262, 294, 0, 330"
-                        placeholderTextColor="#64748b"
-                        className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-3 text-white mb-2"
-                        style={{ fontFamily: monospaceFont }}
+                        placeholderTextColor={theme.colors.subtleText}
+                        style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border, color: theme.colors.text, fontFamily: monospaceFont }}
+                        className="border rounded-xl px-3 py-3 mb-2"
                       />
                       <TextInput
                         value={editMelodyDelays}
                         onChangeText={setEditMelodyDelays}
                         editable={!isUpdatingMelody}
                         placeholder="Arduino delays (ms), e.g. 500, 500, 250, 750"
-                        placeholderTextColor="#64748b"
-                        className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-3 text-white mb-3"
-                        style={{ fontFamily: monospaceFont }}
+                        placeholderTextColor={theme.colors.subtleText}
+                        style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border, color: theme.colors.text, fontFamily: monospaceFont }}
+                        className="border rounded-xl px-3 py-3 mb-3"
                       />
                       <Pressable
                         onPress={handleUpdateMelody}
                         disabled={isUpdatingMelody}
-                        className={`rounded-xl py-3 items-center ${isUpdatingMelody ? 'bg-slate-700' : 'bg-sky-500'}`}
+                        style={{ backgroundColor: isUpdatingMelody ? theme.colors.surfaceStrong : theme.colors.accent }}
+                        className="rounded-xl py-3 items-center"
                       >
                         {isUpdatingMelody ? (
-                          <ActivityIndicator color="#ffffff" />
+                          <ActivityIndicator color={theme.colors.text} />
                         ) : (
-                          <Text className="text-white font-semibold">Update Melody</Text>
+                          <Text style={{ color: theme.colors.text }} className="font-semibold">Update Melody</Text>
                         )}
                       </Pressable>
                     </View>
@@ -832,7 +842,7 @@ export default function MusicScreen() {
 
           {/* Play/Pause Controls */}
           <View className="mb-4">
-            <Text className="text-slate-300 text-sm font-semibold mb-2">Instrument</Text>
+            <Text style={{ color: theme.colors.text }} className="text-sm font-semibold mb-2">Instrument</Text>
             <View className="flex-row gap-2 flex-wrap">
               {instrumentOptions.map((option) => {
                 const isSelected = instrument === option;
@@ -840,13 +850,10 @@ export default function MusicScreen() {
                   <Pressable
                     key={option}
                     onPress={() => setInstrument(option)}
-                    className={`px-3 py-2 rounded-xl border ${
-                      isSelected
-                        ? 'bg-emerald-500 border-emerald-300'
-                        : 'bg-slate-800 border-slate-700'
-                    }`}
+                    style={{ backgroundColor: isSelected ? theme.colors.accent : theme.colors.surface, borderColor: isSelected ? theme.colors.accent : theme.colors.border }}
+                    className="px-3 py-2 rounded-xl border"
                   >
-                    <Text className={`${isSelected ? 'text-white' : 'text-slate-300'} font-semibold text-xs`}>
+                    <Text style={{ color: isSelected ? theme.colors.text : theme.colors.mutedText }} className="font-semibold text-xs">
                       {option}
                     </Text>
                   </Pressable>
@@ -856,7 +863,7 @@ export default function MusicScreen() {
           </View>
 
           <View className="mb-4">
-            <Text className="text-slate-300 text-sm font-semibold mb-2">Playback Speed</Text>
+            <Text style={{ color: theme.colors.text }} className="text-sm font-semibold mb-2">Playback Speed</Text>
             <View className="flex-row gap-2">
               {speedOptions.map((speed) => {
                 const isSelected = playbackSpeed === speed;
@@ -864,13 +871,10 @@ export default function MusicScreen() {
                   <Pressable
                     key={speed}
                     onPress={() => setPlaybackSpeed(speed)}
-                    className={`px-3 py-2 rounded-xl border ${
-                      isSelected
-                        ? 'bg-sky-500 border-sky-300'
-                        : 'bg-slate-800 border-slate-700'
-                    }`}
+                    style={{ backgroundColor: isSelected ? theme.colors.accent : theme.colors.surface, borderColor: isSelected ? theme.colors.accent : theme.colors.border }}
+                    className="px-3 py-2 rounded-xl border"
                   >
-                    <Text className={`${isSelected ? 'text-white' : 'text-slate-300'} font-semibold text-xs`}>
+                    <Text style={{ color: isSelected ? '#ffffff' : theme.colors.mutedText }} className="font-semibold text-xs">
                       {speed}x
                     </Text>
                   </Pressable>
@@ -883,23 +887,17 @@ export default function MusicScreen() {
             <Pressable
               onPress={() => selectedMelody && playMelody(selectedMelody)}
               disabled={isPlaying || !selectedMelody}
-              className={`${
-                isPlaying || !selectedMelody
-                  ? 'bg-slate-700'
-                  : 'bg-sky-500'
-              } rounded-2xl px-5 py-4 flex-1 items-center`}
+              style={{ backgroundColor: isPlaying || !selectedMelody ? theme.colors.surfaceStrong : theme.colors.accent }}
+              className="rounded-2xl px-5 py-4 flex-1 items-center"
             >
               <MaterialCommunityIcons
                 name="play"
                 size={24}
-                color={isPlaying || !selectedMelody ? '#64748b' : 'white'}
+                color={isPlaying || !selectedMelody ? theme.colors.subtleText : '#ffffff'}
               />
               <Text
-                className={`font-semibold mt-1 ${
-                  isPlaying || !selectedMelody
-                    ? 'text-slate-500'
-                    : 'text-white'
-                }`}
+                style={{ color: isPlaying || !selectedMelody ? theme.colors.subtleText : '#ffffff' }}
+                className="font-semibold mt-1"
               >
                 Play
               </Text>
@@ -908,19 +906,17 @@ export default function MusicScreen() {
             <Pressable
               onPress={stopMelody}
               disabled={!isPlaying}
-              className={`${
-                !isPlaying ? 'bg-slate-700' : 'bg-red-500'
-              } rounded-2xl px-5 py-4 flex-1 items-center`}
+              style={{ backgroundColor: !isPlaying ? theme.colors.surfaceStrong : theme.colors.danger }}
+              className="rounded-2xl px-5 py-4 flex-1 items-center"
             >
               <MaterialCommunityIcons
                 name="stop"
                 size={24}
-                color={!isPlaying ? '#64748b' : 'white'}
+                color={!isPlaying ? theme.colors.subtleText : '#ffffff'}
               />
               <Text
-                className={`font-semibold mt-1 ${
-                  !isPlaying ? 'text-slate-500' : 'text-white'
-                }`}
+                style={{ color: !isPlaying ? theme.colors.subtleText : '#ffffff' }}
+                className="font-semibold mt-1"
               >
                 Stop
               </Text>
