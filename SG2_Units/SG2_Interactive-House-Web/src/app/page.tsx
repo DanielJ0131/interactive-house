@@ -21,7 +21,7 @@ export default function Home() {
             alt="Interactive House Logo"
             width={80}
             height={80}
-            className="object-contain"
+            className="object-contain rounded-full"
           />
         </div>
 
