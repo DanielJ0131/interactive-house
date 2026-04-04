@@ -276,7 +276,7 @@ ${trimmed}
             className="flex-1 bg-transparent px-4 py-2 text-white placeholder:text-white/30 outline-none font-medium resize-none max-h-32"
             rows={1}
             value={message}
-            placeholder="Write a command or ask a question (e.g., 'Turn on the lights')..."
+            placeholder="Write a command or a question..."
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
