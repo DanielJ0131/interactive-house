@@ -21,6 +21,7 @@ interface Melody {
   artist?: string;
   frequencies: number[];
   noteDelays?: number[];
+  state: 'on' | 'off';
 }
 
 export default function MusicScreen() {
@@ -61,6 +62,56 @@ export default function MusicScreen() {
   const instrumentRef = useRef<InstrumentOption>(instrument);
   const activeUserEmail = auth.currentUser?.email ?? 'none';
   const activeProjectId = db.app.options.projectId ?? 'unknown';
+
+  const setLocalMelodyState = (melodyId: string, nextState: 'on' | 'off') => {
+    setMelodies((prev) =>
+      prev.map((melody) => ({
+        ...melody,
+        state: melody.id === melodyId ? nextState : nextState === 'on' ? 'off' : melody.state,
+      }))
+    );
+
+    setSelectedMelody((prev) => {
+      if (!prev) return prev;
+
+      if (prev.id === melodyId) {
+        return {
+          ...prev,
+          state: nextState,
+        };
+      }
+
+      if (nextState === 'on') {
+        return {
+          ...prev,
+          state: 'off',
+        };
+      }
+
+      return prev;
+    });
+  };
+
+  const syncMelodyState = async (melodyId: string, nextState: 'on' | 'off') => {
+    setLocalMelodyState(melodyId, nextState);
+
+    if (isGuest || !isAuthenticated || !isAdmin) {
+      return;
+    }
+
+    try {
+      await setDoc(
+        doc(getMusicCollectionRef(db), melodyId),
+        {
+          state: nextState,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+    } catch (error) {
+      console.error(`Error updating melody state for ${melodyId}:`, error);
+    }
+  };
 
   useEffect(() => {
     playbackSpeedRef.current = playbackSpeed;
@@ -148,6 +199,7 @@ export default function MusicScreen() {
             artist: data.artist || 'Unknown',
             frequencies: Object.values(frequencies).map(f => Number(f)),
             noteDelays: Object.values(noteDelays).map((d) => Number(d)),
+            state: data.state === 'on' ? 'on' : 'off',
           });
         });
 
@@ -315,6 +367,7 @@ export default function MusicScreen() {
         artist: artistName,
         frequencies,
         noteDelays,
+        state: 'off',
       };
 
       setMelodies((prev) => {
@@ -482,6 +535,8 @@ export default function MusicScreen() {
 
   // Stop all playing oscillators
   const stopMelody = () => {
+    const activeMelodyId = playbackStateRef.current.melody?.id;
+
     playbackStateRef.current.isActive = false;
     playbackStateRef.current.index = 0;
     playbackStateRef.current.melody = null;
@@ -497,6 +552,10 @@ export default function MusicScreen() {
       gainsRef,
     });
     setIsPlaying(false);
+
+    if (activeMelodyId) {
+      void syncMelodyState(activeMelodyId, 'off');
+    }
   };
 
   useEffect(() => {
@@ -529,6 +588,7 @@ export default function MusicScreen() {
         index: 0,
         isActive: true,
       };
+      void syncMelodyState(melody.id, 'on');
 
       const playNextNote = async () => {
         const playbackState = playbackStateRef.current;
@@ -541,8 +601,10 @@ export default function MusicScreen() {
 
         if (noteIndex >= currentMelody.frequencies.length) {
           playbackStateRef.current.isActive = false;
+          playbackStateRef.current.melody = null;
           setIsPlaying(false);
           playbackTimeoutRef.current = null;
+          void syncMelodyState(currentMelody.id, 'off');
           return;
         }
 
@@ -760,9 +822,27 @@ export default function MusicScreen() {
           {/* Current Melody Display */}
           {selectedMelody && (
             <View style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }} className="rounded-3xl p-6 border mb-5">
-              <Text style={{ color: theme.colors.text }} className="text-xl font-semibold mb-2">
-                Current Melody
-              </Text>
+              <View className="flex-row items-center justify-between mb-2">
+                <Text style={{ color: theme.colors.text }} className="text-xl font-semibold">
+                  Current Melody
+                </Text>
+                <View
+                  style={{
+                    backgroundColor:
+                      selectedMelody.state === 'on' ? theme.colors.accentSoft : theme.colors.surfaceStrong,
+                  }}
+                  className="rounded-full px-3 py-1"
+                >
+                  <Text
+                    style={{
+                      color: selectedMelody.state === 'on' ? theme.colors.accentText : theme.colors.mutedText,
+                    }}
+                    className="text-[10px] font-semibold tracking-wider"
+                  >
+                    {selectedMelody.state.toUpperCase()}
+                  </Text>
+                </View>
+              </View>
               <Text style={{ color: theme.colors.accent }} className="font-bold text-lg mb-1">
                 {selectedMelody.name}
               </Text>
