@@ -5,6 +5,7 @@ import { hubController } from '../utils/hubController';
 import { useRouter } from "expo-router";
 import { useAppTheme } from '../utils/AppThemeContext';
 import {getMusicController} from '../utils/musicController';
+import { getEmergencyController } from '../utils/emergencyController';
 
 export default function SpeechOverlay() {
   const router = useRouter();
@@ -24,11 +25,16 @@ export default function SpeechOverlay() {
   const isNativeAvailable = !!SpeechRecognition?.ExpoSpeechRecognitionModule;
 
   if (isNativeAvailable) {
-    SpeechRecognition.useSpeechRecognitionEvent("result", (event: any) => {
-      const text = event.results?.[0]?.transcript ?? "";
-      setTranscript(text);
-      handleIntent(text);
-    });
+  SpeechRecognition.useSpeechRecognitionEvent("result", (event: any) => {
+  const result = event.results?.[0];
+  const text = result?.transcript ?? "";
+
+
+  if (result && result.isFinal === false) return;
+
+  setTranscript(text);
+  handleIntent(text);
+});
 
     SpeechRecognition.useSpeechRecognitionEvent("end", () => {
       setIsListening(false);
@@ -40,18 +46,20 @@ export default function SpeechOverlay() {
     const hub = hubController();
     const music = getMusicController();
     const words = lower.split(" ");
+    const emergency = getEmergencyController();
+
     //test
     console.log("hub:", hub);
+
     // ---------------
     // Hub Commands
     // ---------------
 
-// FAN ON
+
    if (lower.includes("fan on")) {
     hub.toggleDevice?.("fan_INA");
   }
 
-// FAN OFF
    if (lower.includes("fan off")) {
     hub.toggleDevice?.("fan_INA");
   }
@@ -90,47 +98,41 @@ export default function SpeechOverlay() {
     // Music Commands
     // ---------------
   
-    if (music) {
-  const words = lower.replace(/[^\w\s]/g, "").split(" ");
 
-  if (words.includes("play") && words.includes("music")) {
+   if (!music) return;
+
+   if (lower.includes("mario") || lower.includes("imperial") || lower.includes("pirate")) {
+    music.playSongByName?.(lower);
+   }
+
+   if (lower === "play" || lower.includes("start")) {
     music.play?.();
   }
 
-  if (words.includes("stop") && words.includes("music")) {
+   if (lower.includes("stop")) {
     music.stop?.();
-  }
+ }
 
-  if (words.includes("play") && !words.includes("music")) {
-    music.playSongByName?.(lower);
-  }
 
-  if (words.includes("piano")) {
+   if (lower.includes("piano")) {
     music.setInstrument?.("electric piano");
-  }
+ }
 
-  if (words.includes("square")) {
-    music.setInstrument?.("square");
-  }
+   if (lower.includes("square")) {
+   music.setInstrument?.("square");
+ }
 
-  if (words.includes("saw")) {
+   if (lower.includes("saw")) {
     music.setInstrument?.("sawtooth");
+ }
+
+   if (lower.includes("2x") || lower.includes("fast")) {
+    music.setSpeed?.(2);
   }
 
-  if (words.includes("fast")) {
-    music.setSpeed?.(1.5);
-  }
-
-  if (words.includes("slow")) {
+   if (lower.includes("slow")) {
     music.setSpeed?.(0.5);
-  }
-
-  if (words.includes("normal")) {
-    music.setSpeed?.(1);
-  }
-}
-     
-
+ }
 
     // ---------------
     // Navigation Commands
@@ -138,6 +140,21 @@ export default function SpeechOverlay() {
     if (words.includes("ai")) {router.push("/(tabs)/ai");}
     if (words.includes("music")) {router.push("/(tabs)/music");}
     if (words.includes("hub") || words.includes("home")) {router.push("/(tabs)/hub");}
+
+    //---------------
+    // Emergency Commands
+    // ---------------
+
+if (
+  lower.includes("emergency") ||
+  lower.includes("help") ||
+  lower.includes("call emergency")
+) {
+router.push("/emergency");
+  setTimeout(() => {
+    emergency.startCall?.();
+  }, 500);
+}
   };
 
   const requestMicPermission = async () => {

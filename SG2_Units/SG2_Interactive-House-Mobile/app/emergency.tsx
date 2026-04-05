@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAppTheme } from '../utils/AppThemeContext';
+import { registerEmergencyController } from '../utils/emergencyController';
 
 type EmergencyState = 'confirm' | 'calling' | 'ended';
 
@@ -34,6 +35,19 @@ export default function EmergencyScreen() {
       if (interval) clearInterval(interval);
     };
   }, [state]);
+
+  //for speech control
+  useEffect(() => {
+  registerEmergencyController({
+    startCall: () => {
+      startCall();
+    },
+  });
+
+  return () => {
+    registerEmergencyController({});
+  };
+}, []);
 
   const formatTime = (totalSeconds: number) => {
     const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0');

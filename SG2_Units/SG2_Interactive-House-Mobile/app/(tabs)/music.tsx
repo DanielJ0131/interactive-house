@@ -5,6 +5,7 @@ import { doc, getDoc, onSnapshot, setDoc, deleteDoc, type DocumentData } from 'f
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '../../utils/firebaseConfig';
 import { getMusicCollectionRef } from '../../utils/firestorePaths';
+import { registerMusicController } from '@/utils/musicController';  
 import { useGuest } from '../../utils/GuestContext';
 import {
   initializeAudioContext,
@@ -900,6 +901,51 @@ export default function MusicScreen() {
       setCurrentNoteIndex(-1);
     }
   };
+// fpr speech
+useEffect(() => {
+  registerMusicController({
+    play: () => {
+      if (selectedMelody) {
+        playMelody(selectedMelody);
+      }
+    },
+
+    stop: () => {
+      stopMelody();
+    },
+
+    setInstrument: (inst) => {
+      setInstrument(inst);
+    },
+
+    setSpeed: (speed) => {
+      setPlaybackSpeed(speed);
+    },
+
+    playSongByName: (text: string) => {
+      const normalize = (s: string) =>
+        s.toLowerCase().replace(/[^a-z0-9\s]/g, "");
+
+      const input = normalize(text);
+
+      const found = melodies.find((m) => {
+        const name = normalize(m.name);
+        return input.includes(name) || name.includes(input);
+      });
+
+      if (found) {
+        console.log(" SELECTED:", found.name);
+        stopMelody();
+        setSelectedMelody(found);
+      
+      }
+    },
+  });
+
+  return () => {
+    registerMusicController({});
+  };
+}, [selectedMelody, melodies]);
 
   const handleSelectMelody = async (melody: Melody) => {
     setSelectedMelody(melody);
