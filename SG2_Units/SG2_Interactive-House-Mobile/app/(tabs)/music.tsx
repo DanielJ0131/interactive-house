@@ -14,6 +14,7 @@ import {
   type InstrumentOption,
 } from '../../utils/musicAudio';
 import { useAppTheme } from '../../utils/AppThemeContext';
+import { registerMusicController } from '../../utils/musicController';
 
 interface Melody {
   id: string;
@@ -135,6 +136,7 @@ export default function MusicScreen() {
         setIsLoading(true);
         setLoadError(null);
         const querySnapshot = await getDocs(getMusicCollectionRef(db));
+        // console.log(melodies.map(m => m.name));
         const loadedMelodies: Melody[] = [];
 
         querySnapshot.forEach((doc) => {
@@ -499,11 +501,56 @@ export default function MusicScreen() {
     setIsPlaying(false);
   };
 
-  useEffect(() => {
-    return () => {
+  //for speech commands
+useEffect(() => {
+  registerMusicController({
+    play: () => {
+      if (selectedMelody) {
+        playMelody(selectedMelody);
+      }
+    },
+
+    stop: () => {
       stopMelody();
-    };
-  }, []);
+    },
+
+    setInstrument: (inst) => {
+      setInstrument(inst);
+    },
+
+    setSpeed: (speed) => {
+      setPlaybackSpeed(speed);
+    },
+
+    playSongByName: (text: string) => {
+      const normalizeText = (str: any) =>
+        String(str)
+          .toLowerCase()
+          .replace(/ü/g, "u")
+          .replace(/ö/g, "o")
+          .replace(/ä/g, "a")
+          .replace(/[^a-z0-9\s]/g, "");
+
+      const normalizedInput = normalizeText(text);
+
+      const found = melodies.find((m) => {
+        const normalizedName = normalizeText(m.name);
+
+        return (
+          normalizedInput.includes(normalizedName) ||
+          normalizedName.includes(normalizedInput)
+        );
+      });
+
+      if (found) {
+        stopMelody();
+        setSelectedMelody(found);
+        playMelody(found);
+      }
+    },
+  });
+
+}, [selectedMelody, melodies]);
 
   // Play melody with frequencies
   const playMelody = async (melody: Melody) => {

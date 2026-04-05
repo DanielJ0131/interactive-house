@@ -19,6 +19,7 @@ import { db, auth } from '../../utils/firebaseConfig';
 import { ARDUINO_DOC_ID, getArduinoDevicesDocRef } from '../../utils/firestorePaths';
 import { useAppTheme } from '../../utils/AppThemeContext';
 import { useGuest } from '../../utils/GuestContext';
+import { registerHubController } from '../../utils/hubController';
 
 type DeviceState = 'on' | 'off' | 'open' | 'closed';
 
@@ -61,6 +62,7 @@ type DeviceKey =
   | 'white_light'
   | 'orange_light'
   | 'fan_INA'
+  | 'fan_INB'
   | 'door'
   | 'window'
   | 'buzzer';
@@ -269,6 +271,7 @@ export default function DatabaseScreen() {
     setYellowLedPercent(Math.round((clampedRaw / 255) * 100));
   }, [yellowLedRaw]);
 
+
   const toggleDevice = useCallback(
     async (deviceName: DeviceKey) => {
       const currentDevice = (isGuest ? guestDeviceData : deviceData)?.[deviceName] as HardwareDevice | undefined;
@@ -413,6 +416,18 @@ export default function DatabaseScreen() {
       setIsReversingFan(false);
     }
   }, [isGuest, deviceData, guestDeviceData, isReversingFan]);
+
+  // for speech recognition
+useEffect(() => {
+  registerHubController({
+    toggleDevice: (id) => toggleDevice(id),
+    toggleDirection: () => reverseFan(),
+  });
+
+  return () => {
+    registerHubController({});
+  };
+}, [toggleDevice, reverseFan]);
 
   const updateYellowLed = useCallback(async (percent: number) => {
     try {

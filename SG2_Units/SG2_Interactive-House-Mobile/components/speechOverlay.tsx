@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { hubController } from '../utils/hubController';
 import { useRouter } from "expo-router";
 import { useAppTheme } from '../utils/AppThemeContext';
+import {getMusicController} from '../utils/musicController';
 
 export default function SpeechOverlay() {
   const router = useRouter();
@@ -37,38 +38,106 @@ export default function SpeechOverlay() {
   const handleIntent = (text: string) => {
     const lower = text.toLowerCase();
     const hub = hubController();
+    const music = getMusicController();
+    const words = lower.split(" ");
+    //test
+    console.log("hub:", hub);
+    // ---------------
+    // Hub Commands
+    // ---------------
 
-    if  ( lower.includes ("fan On") || lower.includes("turn on fan"))
-      hub.setSlider?.("fan", 100)
+// FAN ON
+   if (lower.includes("fan on")) {
+    hub.toggleDevice?.("fan_INA");
+  }
 
-    if (lower.includes("fan Off") || lower.includes("turn off fan"))
-      hub.setSlider?.("fan", 0)
+// FAN OFF
+   if (lower.includes("fan off")) {
+    hub.toggleDevice?.("fan_INA");
+  }
 
-    if (lower.includes("reverse fan") || lower.includes("fan reverse"))
-      hub.toggleDirection?.("fan")
+// REVERSE FAN
+    if (lower.includes("reverse fan") || lower.includes("fan reverse")) {
+     hub.toggleDirection?.("fan_INA");
+    }
+     
+    if (lower.includes("Buzzer") || lower.includes("buzzer")) {
+     hub.toggleDevice?.("buzzer" as any);
+     }
 
-    if (lower.includes("buzzer on") || lower.includes(" turn on buzzer"))
-      hub.buzzerPress?.("buzzer", true)
-
-    if (lower.includes("buzzer off") || lower.includes("turn off buzzer"))
-      hub.buzzerPress?.("buzzer", false)
-
-    if (lower.includes("relay on") || lower.includes("relay off"))
-      hub.toggleDevice?.("relay")
-
-    if (lower.includes("yellow") || lower.includes(" yellow LED"))
-      hub.toggleDevice?.("led_yellow")
-
-    if (lower.includes("white") || lower.includes("LED white"))
-      hub.toggleDevice?.("led_white")
-
-    if (lower.includes ("door"))
-      hub.toggleDevice?.("servo_door")
-
-    if (lower.includes("window"))
-      hub.toggleDevice?.("servo_window")
+    // if (lower.includes("Buzzer") || lower.includes("buzzer")) {
+    //  hub.toggleDevice?.("buzzer" as any);
     
-    if (lower.includes("ai")) router.push("/(tabs)/ai");
+    // if (lower.includes("relay on") || lower.includes("relay off"))
+    //   hub.toggleDevice?.("relay")
+
+    if (lower.includes("Orange") || lower.includes("orange")) {
+     hub.toggleDevice?.("orange_light" as any);
+    }
+
+ if (lower.includes("White") || lower.includes("white")) {
+    hub.toggleDevice?.("white_light" as any);
+     }
+
+    if (lower.includes("door")) {
+     hub.toggleDevice?.("door" as any);
+      }
+
+    if (lower.includes("window")) {
+      hub.toggleDevice?.("window" as any);
+     }  
+    // ---------------
+    // Music Commands
+    // ---------------
+  
+    if (music) {
+  const words = lower.replace(/[^\w\s]/g, "").split(" ");
+
+  if (words.includes("play") && words.includes("music")) {
+    music.play?.();
+  }
+
+  if (words.includes("stop") && words.includes("music")) {
+    music.stop?.();
+  }
+
+  if (words.includes("play") && !words.includes("music")) {
+    music.playSongByName?.(lower);
+  }
+
+  if (words.includes("piano")) {
+    music.setInstrument?.("electric piano");
+  }
+
+  if (words.includes("square")) {
+    music.setInstrument?.("square");
+  }
+
+  if (words.includes("saw")) {
+    music.setInstrument?.("sawtooth");
+  }
+
+  if (words.includes("fast")) {
+    music.setSpeed?.(1.5);
+  }
+
+  if (words.includes("slow")) {
+    music.setSpeed?.(0.5);
+  }
+
+  if (words.includes("normal")) {
+    music.setSpeed?.(1);
+  }
+}
+     
+
+
+    // ---------------
+    // Navigation Commands
+    // ---------------
+    if (words.includes("ai")) {router.push("/(tabs)/ai");}
+    if (words.includes("music")) {router.push("/(tabs)/music");}
+    if (words.includes("hub") || words.includes("home")) {router.push("/(tabs)/hub");}
   };
 
   const requestMicPermission = async () => {

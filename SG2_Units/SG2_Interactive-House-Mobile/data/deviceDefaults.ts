@@ -51,3 +51,5 @@ export const INITIAL_DEVICE_DATA: DeviceData = {
     pin: "10"
   }
 };
+
+export type DeviceKey = keyof DeviceData;
