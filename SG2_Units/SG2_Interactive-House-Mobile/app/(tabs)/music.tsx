@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, Pressable, ScrollView, ActivityIndicator, TextInput, Alert, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { doc, getDoc, getDocs, setDoc, deleteDoc, type DocumentData } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc, deleteDoc, type DocumentData } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '../../utils/firebaseConfig';
 import { getMusicCollectionRef } from '../../utils/firestorePaths';
@@ -14,7 +14,6 @@ import {
   type InstrumentOption,
 } from '../../utils/musicAudio';
 import { useAppTheme } from '../../utils/AppThemeContext';
-import { registerMusicController } from '../../utils/musicController';
 
 interface Melody {
   id: string;
@@ -22,6 +21,166 @@ interface Melody {
   artist?: string;
   frequencies: number[];
   noteDelays?: number[];
+  state: 'on' | 'off';
+}
+
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const OCTAVE_KEYS = [
+  { label: 'C', isBlack: false, whiteIndex: 0 },
+  { label: 'C#', isBlack: true, whiteIndex: 0 },
+  { label: 'D', isBlack: false, whiteIndex: 1 },
+  { label: 'D#', isBlack: true, whiteIndex: 1 },
+  { label: 'E', isBlack: false, whiteIndex: 2 },
+  { label: 'F', isBlack: false, whiteIndex: 3 },
+  { label: 'F#', isBlack: true, whiteIndex: 3 },
+  { label: 'G', isBlack: false, whiteIndex: 4 },
+  { label: 'G#', isBlack: true, whiteIndex: 4 },
+  { label: 'A', isBlack: false, whiteIndex: 5 },
+  { label: 'A#', isBlack: true, whiteIndex: 5 },
+  { label: 'B', isBlack: false, whiteIndex: 6 },
+] as const;
+
+const frequencyToNoteName = (frequency: number) => {
+  if (!Number.isFinite(frequency) || frequency <= 0) {
+    return 'Rest';
+  }
+
+  const midiNumber = Math.round(69 + 12 * Math.log2(frequency / 440));
+  const noteIndex = ((midiNumber % 12) + 12) % 12;
+  return NOTE_NAMES[noteIndex] ?? 'Rest';
+};
+
+function FakePiano({
+  frequencies,
+  activeNoteIndex,
+  isActive,
+}: {
+  frequencies: number[];
+  activeNoteIndex: number;
+  isActive: boolean;
+}) {
+  const visibleNotes = OCTAVE_KEYS;
+  const activeFrequency = frequencies[activeNoteIndex] ?? 0;
+  const activeNoteName = frequencyToNoteName(activeFrequency);
+
+  const renderNoteLabel = (label: string, isHighlighted: boolean, isBlackKey: boolean) => {
+    const sharpIndex = label.indexOf('#');
+
+    if (sharpIndex === -1) {
+      return (
+        <Text
+          numberOfLines={1}
+          style={{
+            color: isHighlighted ? '#111827' : isBlackKey ? '#ffffff' : '#334155',
+            fontSize: 11,
+            fontWeight: '600',
+          }}
+        >
+          {label}
+        </Text>
+      );
+    }
+
+    const baseNote = label.slice(0, sharpIndex);
+
+    return (
+      <View className="items-center justify-end">
+        <Text
+          style={{
+            color: isHighlighted ? '#111827' : isBlackKey ? '#ffffff' : '#334155',
+            fontSize: 10,
+            fontWeight: '600',
+            lineHeight: 12,
+          }}
+        >
+          {baseNote}
+        </Text>
+        <Text
+          style={{
+            color: isHighlighted ? '#111827' : isBlackKey ? '#ffffff' : '#334155',
+            fontSize: 9,
+            fontWeight: '800',
+            lineHeight: 10,
+            marginTop: -1,
+          }}
+        >
+          #
+        </Text>
+      </View>
+    );
+  };
+
+  return (
+    <View className="w-full overflow-hidden rounded-2xl bg-black/5 p-2">
+      <View style={{ height: 128 }} className="relative w-full">
+        <View className="absolute inset-x-0 bottom-0 flex-row h-24">
+          {visibleNotes
+            .filter((key) => !key.isBlack)
+            .map((key) => {
+              const isHighlighted = isActive && activeNoteName === key.label;
+
+              return (
+                <View
+                  key={key.label}
+                  style={{
+                    flex: 1,
+                  backgroundColor: isHighlighted ? '#facc15' : '#f8fafc',
+                  borderColor: isHighlighted ? '#eab308' : '#d4d4d8',
+                  shadowColor: '#000000',
+                  shadowOpacity: isHighlighted ? 0.22 : 0.07,
+                    shadowRadius: 3,
+                    shadowOffset: { width: 0, height: 2 },
+                    elevation: isHighlighted ? 3 : 1,
+                  }}
+                  className="items-center justify-end rounded-b-lg border px-1 pb-2"
+                >
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                        color: isHighlighted ? '#111827' : '#334155',
+                      fontSize: 11,
+                      fontWeight: '600',
+                    }}
+                  >
+                    {key.label}
+                  </Text>
+                </View>
+              );
+            })}
+        </View>
+
+        {visibleNotes
+          .filter((key) => key.isBlack)
+          .map((key) => {
+            const isHighlighted = isActive && activeNoteName === key.label;
+            const blackKeyStyle = {
+              position: 'absolute' as const,
+              left: `${((key.whiteIndex + 1) / 7) * 100 - 3.2}%`,
+              top: 0,
+              width: '6.4%',
+              height: isHighlighted ? 69 : 66,
+              backgroundColor: isHighlighted ? '#facc15' : '#111827',
+              borderColor: isHighlighted ? '#eab308' : '#000000',
+              shadowColor: '#000000',
+              shadowOpacity: isHighlighted ? 0.26 : 0.14,
+              shadowRadius: 4,
+              shadowOffset: { width: 0, height: 3 },
+              elevation: isHighlighted ? 4 : 2,
+            } as const;
+
+            return (
+              <View
+                key={key.label}
+                style={blackKeyStyle}
+                className="items-center justify-end rounded-b-lg border px-1 pb-2"
+              >
+                {renderNoteLabel(key.label, isHighlighted, true)}
+              </View>
+            );
+          })}
+      </View>
+    </View>
+  );
 }
 
 export default function MusicScreen() {
@@ -32,6 +191,8 @@ export default function MusicScreen() {
   const [melodies, setMelodies] = useState<Melody[]>([]);
   const [selectedMelody, setSelectedMelody] = useState<Melody | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playingMelodyId, setPlayingMelodyId] = useState<string | null>(null);
+  const [currentNoteIndex, setCurrentNoteIndex] = useState(-1);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [instrument, setInstrument] = useState<InstrumentOption>('square');
   const [isLoading, setIsLoading] = useState(true);
@@ -62,6 +223,127 @@ export default function MusicScreen() {
   const instrumentRef = useRef<InstrumentOption>(instrument);
   const activeUserEmail = auth.currentUser?.email ?? 'none';
   const activeProjectId = db.app.options.projectId ?? 'unknown';
+
+  const hydrateMelodiesFromSnapshot = (nextMelodies: Melody[]) => {
+    setMelodies(nextMelodies);
+
+    const currentlyPlayingMelody = nextMelodies.find((melody) => melody.state === 'on');
+
+    if (currentlyPlayingMelody) {
+      setSelectedMelody(currentlyPlayingMelody);
+      return;
+    }
+
+    setSelectedMelody((prev) => {
+      if (!prev) {
+        return nextMelodies[0] ?? null;
+      }
+
+      return nextMelodies.find((melody) => melody.id === prev.id) ?? nextMelodies[0] ?? prev;
+    });
+  };
+
+  const setOnlyOneMelodyOn = async (melodyId: string, nextState: 'on' | 'off') => {
+    setMelodies((prev) =>
+      prev.map((melody) => ({
+        ...melody,
+        state: melody.id === melodyId ? nextState : 'off',
+      }))
+    );
+
+    setSelectedMelody((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      if (prev.id === melodyId) {
+        return {
+          ...prev,
+          state: nextState,
+        };
+      }
+
+      const activeMelody = melodies.find((melody) => melody.id === melodyId);
+
+      return activeMelody
+        ? {
+            ...activeMelody,
+            state: nextState,
+          }
+        : prev;
+    });
+
+    if (isGuest || !isAuthenticated || !isAdmin) {
+      return;
+    }
+
+    try {
+      const offWrites = melodies.map((melody) =>
+        setDoc(
+          doc(getMusicCollectionRef(db), melody.id),
+          {
+            state: 'off',
+            updatedAt: new Date().toISOString(),
+          },
+          { merge: true }
+        )
+      );
+
+      await Promise.all(offWrites);
+
+      if (nextState === 'on') {
+        await setDoc(
+          doc(getMusicCollectionRef(db), melodyId),
+          {
+            state: 'on',
+            updatedAt: new Date().toISOString(),
+          },
+          { merge: true }
+        );
+      }
+    } catch (error) {
+      console.error(`Error updating melody states for ${melodyId}:`, error);
+    }
+  };
+
+  const syncMelodyState = async (melodyId: string, nextState: 'on' | 'off') => {
+    setMelodies((prev) =>
+      prev.map((melody) => ({
+        ...melody,
+        state: melody.id === melodyId ? nextState : melody.state,
+      }))
+    );
+
+    setSelectedMelody((prev) => {
+      if (!prev) return prev;
+
+      if (prev.id === melodyId) {
+        return {
+          ...prev,
+          state: nextState,
+        };
+      }
+
+      return prev;
+    });
+
+    if (isGuest || !isAuthenticated || !isAdmin) {
+      return;
+    }
+
+    try {
+      await setDoc(
+        doc(getMusicCollectionRef(db), melodyId),
+        {
+          state: nextState,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+    } catch (error) {
+      console.error(`Error updating melody state for ${melodyId}:`, error);
+    }
+  };
 
   useEffect(() => {
     playbackSpeedRef.current = playbackSpeed;
@@ -108,11 +390,12 @@ export default function MusicScreen() {
     return unsubscribe;
   }, []);
 
-  // Fetch melodies from Firestore
+  // Keep melodies in sync with Firestore so remote state changes are reflected immediately.
   useEffect(() => {
     if (isGuest) {
       setMelodies([]);
       setSelectedMelody(null);
+      setCurrentNoteIndex(-1);
       setLoadError('Guest mode cannot access cloud melodies. Sign in to view songs.');
       setIsLoading(false);
       return;
@@ -126,51 +409,51 @@ export default function MusicScreen() {
     if (!isAuthenticated) {
       setMelodies([]);
       setSelectedMelody(null);
+      setCurrentNoteIndex(-1);
       setLoadError('Please sign in to load cloud melodies.');
       setIsLoading(false);
       return;
     }
 
-    const fetchMelodies = async () => {
-      try {
-        setIsLoading(true);
-        setLoadError(null);
-        const querySnapshot = await getDocs(getMusicCollectionRef(db));
-        // console.log(melodies.map(m => m.name));
-        const loadedMelodies: Melody[] = [];
+    setIsLoading(true);
+    setLoadError(null);
 
-        querySnapshot.forEach((doc) => {
-          const data = doc.data() as DocumentData;
+    const unsubscribe = onSnapshot(
+      getMusicCollectionRef(db),
+      (querySnapshot) => {
+        const nextMelodies: Melody[] = [];
+
+        querySnapshot.forEach((docSnap) => {
+          const data = docSnap.data() as DocumentData;
           const frequencies = data.frequencies || [];
           const noteDelays = data.noteDelays || [];
-          
-          loadedMelodies.push({
-            id: doc.id,
-            name: doc.id,
+
+          nextMelodies.push({
+            id: docSnap.id,
+            name: docSnap.id,
             artist: data.artist || 'Unknown',
-            frequencies: Object.values(frequencies).map(f => Number(f)),
+            frequencies: Object.values(frequencies).map((f) => Number(f)),
             noteDelays: Object.values(noteDelays).map((d) => Number(d)),
+            state: data.state === 'on' ? 'on' : 'off',
           });
         });
 
-        setMelodies(loadedMelodies);
-        if (loadedMelodies.length > 0) {
-          setSelectedMelody(loadedMelodies[0]);
-        }
-      } catch (error: any) {
+        hydrateMelodiesFromSnapshot(nextMelodies);
+        setIsLoading(false);
+      },
+      (error) => {
         const errorCode = error?.code ? ` (${error.code})` : '';
         if (error?.code === 'permission-denied') {
           setLoadError(`Access denied to melodies${errorCode}. Please sign in with an authorized account.`);
         } else {
           setLoadError(`Unable to load melodies right now${errorCode}. Please try again.`);
         }
-        console.error('Error fetching melodies:', error);
-      } finally {
         setIsLoading(false);
+        console.error('Error syncing melodies:', error);
       }
-    };
+    );
 
-    fetchMelodies();
+    return unsubscribe;
   }, [isGuest, isAuthReady, isAuthenticated]);
 
   const parseFrequencies = (value: string): number[] => {
@@ -253,9 +536,15 @@ export default function MusicScreen() {
     setEditMelodyDelays(aligned.delaysText);
   }, [selectedMelody]);
 
-  const selectedAlignedSequences = selectedMelody
-    ? formatAlignedFrequencyDelayStrings(selectedMelody.frequencies, selectedMelody.noteDelays || [])
-    : null;
+  const isSelectedMelodyPlaying = playingMelodyId === selectedMelody?.id && isPlaying;
+
+  useEffect(() => {
+    const activeMelody = melodies.find((melody) => melody.state === 'on');
+
+    if (activeMelody && activeMelody.id !== selectedMelody?.id) {
+      setSelectedMelody(activeMelody);
+    }
+  }, [melodies, selectedMelody?.id]);
 
   const handleAddMelody = async () => {
     if (isSavingMelody) return;
@@ -317,6 +606,7 @@ export default function MusicScreen() {
         artist: artistName,
         frequencies,
         noteDelays,
+        state: 'off',
       };
 
       setMelodies((prev) => {
@@ -324,6 +614,7 @@ export default function MusicScreen() {
         return [createdMelody, ...withoutDuplicate];
       });
       setSelectedMelody(createdMelody);
+      setCurrentNoteIndex(-1);
       setNewMelodyName('');
       setNewMelodyArtist('');
       setNewMelodyFrequencies('');
@@ -358,6 +649,10 @@ export default function MusicScreen() {
 
       if (wasPlayingSelected) {
         stopMelody();
+      }
+
+      if (selectedMelody?.id === melody.id) {
+        setCurrentNoteIndex(-1);
       }
 
       Alert.alert('Deleted', `Melody "${melody.name}" was deleted.`);
@@ -484,6 +779,8 @@ export default function MusicScreen() {
 
   // Stop all playing oscillators
   const stopMelody = () => {
+    const activeMelodyId = playbackStateRef.current.melody?.id;
+
     playbackStateRef.current.isActive = false;
     playbackStateRef.current.index = 0;
     playbackStateRef.current.melody = null;
@@ -499,58 +796,18 @@ export default function MusicScreen() {
       gainsRef,
     });
     setIsPlaying(false);
+    setCurrentNoteIndex(-1);
+
+    if (activeMelodyId) {
+      void setOnlyOneMelodyOn(activeMelodyId, 'off');
+    }
   };
 
-  //for speech commands
-useEffect(() => {
-  registerMusicController({
-    play: () => {
-      if (selectedMelody) {
-        playMelody(selectedMelody);
-      }
-    },
-
-    stop: () => {
+  useEffect(() => {
+    return () => {
       stopMelody();
-    },
-
-    setInstrument: (inst) => {
-      setInstrument(inst);
-    },
-
-    setSpeed: (speed) => {
-      setPlaybackSpeed(speed);
-    },
-
-    playSongByName: (text: string) => {
-      const normalizeText = (str: any) =>
-        String(str)
-          .toLowerCase()
-          .replace(/ü/g, "u")
-          .replace(/ö/g, "o")
-          .replace(/ä/g, "a")
-          .replace(/[^a-z0-9\s]/g, "");
-
-      const normalizedInput = normalizeText(text);
-
-      const found = melodies.find((m) => {
-        const normalizedName = normalizeText(m.name);
-
-        return (
-          normalizedInput.includes(normalizedName) ||
-          normalizedName.includes(normalizedInput)
-        );
-      });
-
-      if (found) {
-        stopMelody();
-        setSelectedMelody(found);
-        playMelody(found);
-      }
-    },
-  });
-
-}, [selectedMelody, melodies]);
+    };
+  }, []);
 
   // Play melody with frequencies
   const playMelody = async (melody: Melody) => {
@@ -571,11 +828,14 @@ useEffect(() => {
       }
 
       setIsPlaying(true);
+      setCurrentNoteIndex(0);
       playbackStateRef.current = {
         melody,
         index: 0,
         isActive: true,
       };
+      setPlayingMelodyId(melody.id);
+      void setOnlyOneMelodyOn(melody.id, 'on');
 
       const playNextNote = async () => {
         const playbackState = playbackStateRef.current;
@@ -588,8 +848,11 @@ useEffect(() => {
 
         if (noteIndex >= currentMelody.frequencies.length) {
           playbackStateRef.current.isActive = false;
+          playbackStateRef.current.melody = null;
           setIsPlaying(false);
+          setCurrentNoteIndex(-1);
           playbackTimeoutRef.current = null;
+          void setOnlyOneMelodyOn(currentMelody.id, 'off');
           return;
         }
 
@@ -621,6 +884,8 @@ useEffect(() => {
           });
         }
 
+        setCurrentNoteIndex(noteIndex);
+
         playbackStateRef.current.index = noteIndex + 1;
         playbackTimeoutRef.current = setTimeout(() => {
           void playNextNote();
@@ -631,6 +896,8 @@ useEffect(() => {
     } catch (error) {
       console.error('Error playing melody:', error);
       setIsPlaying(false);
+      setPlayingMelodyId(null);
+      setCurrentNoteIndex(-1);
     }
   };
 
@@ -807,29 +1074,48 @@ useEffect(() => {
           {/* Current Melody Display */}
           {selectedMelody && (
             <View style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }} className="rounded-3xl p-6 border mb-5">
-              <Text style={{ color: theme.colors.text }} className="text-xl font-semibold mb-2">
-                Current Melody
-              </Text>
+              <View className="flex-row items-center justify-between mb-2">
+                <Text style={{ color: theme.colors.text }} className="text-xl font-semibold">
+                  Current Melody
+                </Text>
+                <View
+                  style={{
+                    backgroundColor:
+                      isSelectedMelodyPlaying ? theme.colors.accentSoft : theme.colors.surfaceStrong,
+                  }}
+                  className="rounded-full px-3 py-1"
+                >
+                  <Text
+                    style={{
+                      color: isSelectedMelodyPlaying ? theme.colors.accentText : theme.colors.mutedText,
+                    }}
+                    className="text-[10px] font-semibold tracking-wider"
+                  >
+                    {isSelectedMelodyPlaying ? 'ON' : 'OFF'}
+                  </Text>
+                </View>
+              </View>
+              <View style={{ backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border }} className="mb-4 rounded-2xl border px-4 py-4">
+                <View className="flex-row items-center justify-between mb-3">
+                  <Text style={{ color: theme.colors.text }} className="text-xs font-semibold tracking-wider">
+                    MINI PIANO
+                  </Text>
+                  <Text style={{ color: isSelectedMelodyPlaying ? theme.colors.accentText : theme.colors.mutedText }} className="text-[10px] font-semibold">
+                    {isSelectedMelodyPlaying ? 'PLAYING NOW' : 'IDLE'}
+                  </Text>
+                </View>
+                <FakePiano
+                  frequencies={selectedMelody.frequencies}
+                  activeNoteIndex={currentNoteIndex}
+                  isActive={isSelectedMelodyPlaying}
+                />
+              </View>
               <Text style={{ color: theme.colors.accent }} className="font-bold text-lg mb-1">
                 {selectedMelody.name}
               </Text>
               <Text style={{ color: theme.colors.mutedText }} className="mb-4">
                 {selectedMelody.artist}
               </Text>
-              <Text style={{ color: theme.colors.subtleText }} className="text-sm">
-                Frequencies (Hz):
-              </Text>
-              <Text style={{ color: theme.colors.subtleText, fontFamily: monospaceFont }} className="text-sm">
-                {selectedAlignedSequences?.frequenciesText}
-              </Text>
-              {isAdmin && selectedMelody.noteDelays && selectedMelody.noteDelays.length > 0 && (
-                <>
-                  <Text style={{ color: theme.colors.subtleText }} className="text-sm mt-2">Delays (ms):</Text>
-                  <Text style={{ color: theme.colors.subtleText, fontFamily: monospaceFont }} className="text-sm">
-                    {selectedAlignedSequences?.delaysText}
-                  </Text>
-                </>
-              )}
 
               {isAdmin && (
                 <View className="mt-5">
