@@ -2,7 +2,7 @@ import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import Slider from '@react-native-community/slider';
 import DatabaseScreen from '../../../app/(tabs)/hub';
-import { doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, updateDoc, deleteField } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../../../utils/firebaseConfig';
 import { getArduinoDevicesDocRef } from '../../../utils/firestorePaths';
@@ -12,6 +12,7 @@ jest.mock('firebase/firestore', () => ({
   getDoc: jest.fn(),
   onSnapshot: jest.fn(),
   updateDoc: jest.fn(),
+  deleteField: jest.fn(() => 'mock-delete-field'),
 }));
 
 jest.mock('firebase/auth', () => ({
@@ -60,11 +61,6 @@ const mockDeviceData = {
   white_light: {
     pin: 'D13',
     state: 'on',
-    value: null,
-  },
-  orange_light: {
-    pin: 'D5',
-    state: 'off',
     value: null,
   },
   door: {
@@ -118,7 +114,6 @@ describe('Hub Screen', () => {
     });
 
     expect(getByText('White Light')).toBeTruthy();
-    expect(getByText('Orange Light')).toBeTruthy();
     expect(getByText('Door')).toBeTruthy();
     expect(getByText('Window')).toBeTruthy();
     expect(getByText('Sensors')).toBeTruthy();
@@ -173,7 +168,7 @@ describe('Hub Screen', () => {
     });
   });
 
-  it('updates yellow LED value from slider percentage', async () => {
+  it('updates orange light value from slider percentage', async () => {
     const { UNSAFE_getByType } = render(<DatabaseScreen />);
 
     await waitFor(() => {
@@ -184,7 +179,8 @@ describe('Hub Screen', () => {
     fireEvent(slider, 'onSlidingComplete', 50);
 
     expect(updateDoc).toHaveBeenCalledWith('mock-doc-ref', {
-      'yellow_led.value': 128,
+      'orange_light.value': 128,
+      'orange_light.state': deleteField(),
     });
   });
 
@@ -260,39 +256,38 @@ describe('Hub Screen', () => {
     });
   });
 
-  it('marks sensors as active when value exceeds threshold (2)', async () => {
+  it('keeps sensors clear when values are below thresholds', async () => {
     const { queryByText, getByText } = render(<DatabaseScreen />);
 
     await waitFor(() => {
       expect(getByText('Gas')).toBeTruthy();
     });
 
-    // Gas is 1 in mockDeviceData, should be inactive
-    // Motion and Steam are 0, should be inactive
-    expect(queryByText('active')).toBeNull(); // No active indicator
+    // Gas is 1 (<3), Motion is 0 (<1), Steam is 0 (not >0)
+    expect(queryByText('Detected')).toBeNull();
   });
 
-  it('shows sensor as active when value > 2', async () => {
+  it('shows sensor as detected using per-sensor thresholds', async () => {
     (onSnapshot as jest.Mock).mockImplementation(
       (_docRef, onNext: (snap: any) => void) => {
         onNext({
           exists: () => true,
           data: () => ({
             ...mockDeviceData,
-            telemetry: { steam: 5, motion: 3, gas: 1 },
+            telemetry: { steam: 1, motion: 1, gas: 3 },
           }),
         });
         return jest.fn();
       }
     );
 
-    const { getByText } = render(<DatabaseScreen />);
+    const { getAllByText, getByText } = render(<DatabaseScreen />);
 
     await waitFor(() => {
       expect(getByText('Steam')).toBeTruthy();
     });
 
-    // Both steam (5) and motion (3) exceed threshold of 2
+    expect(getAllByText('Detected')).toHaveLength(3);
   });
 
   // ── Sync Status Display ──────────────────────────────────────────────────
@@ -338,9 +333,9 @@ describe('Hub Screen', () => {
     });
   });
 
-  // ── Yellow LED Slider (Enhanced) ─────────────────────────────────────────
+  // ── Orange Light Slider (Enhanced) ───────────────────────────────────────
 
-  it('displays yellow LED slider with percentage label', async () => {
+  it('displays orange light slider with percentage label', async () => {
     const { UNSAFE_getByType, getByText } = render(<DatabaseScreen />);
 
     await waitFor(() => {
@@ -351,7 +346,7 @@ describe('Hub Screen', () => {
     expect(getByText('0%')).toBeTruthy();
   });
 
-  it('updates yellow LED percentage label when slider changes', async () => {
+  it('updates orange light percentage label when slider changes', async () => {
     const { UNSAFE_getByType } = render(<DatabaseScreen />);
 
     await waitFor(() => {
@@ -364,14 +359,14 @@ describe('Hub Screen', () => {
     // Percentage should update to 75%
   });
 
-  it('applies accent styling when yellow LED is at 100%', async () => {
+  it('applies accent styling when orange light is at 100%', async () => {
     (onSnapshot as jest.Mock).mockImplementation(
       (_docRef, onNext: (snap: any) => void) => {
         onNext({
           exists: () => true,
           data: () => ({
             ...mockDeviceData,
-            yellow_led: { value: 255 }, // 100%
+            orange_light: { value: 255 }, // 100%
           }),
         });
         return jest.fn();
@@ -385,14 +380,14 @@ describe('Hub Screen', () => {
     });
   });
 
-  it('clamps yellow LED value to 0-255 range', async () => {
+  it('clamps orange light value to 0-255 range', async () => {
     (onSnapshot as jest.Mock).mockImplementation(
       (_docRef, onNext: (snap: any) => void) => {
         onNext({
           exists: () => true,
           data: () => ({
             ...mockDeviceData,
-            yellow_led: { value: 300 }, // Over max
+            orange_light: { value: 300 }, // Over max
           }),
         });
         return jest.fn();

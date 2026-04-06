@@ -34,15 +34,15 @@ describe('Firestore Database', () => {
   // ── Device defaults structure ────────────────────────────────────────────
 
   describe('INITIAL_DEVICE_DATA', () => {
-    it('contains all 7 expected devices', () => {
+    it('contains all 6 expected devices', () => {
       const keys = Object.keys(INITIAL_DEVICE_DATA);
       expect(keys).toEqual(
         expect.arrayContaining([
           'buzzer', 'door', 'fan_INA', 'fan_INB',
-          'orange_light', 'white_light', 'window',
+          'white_light', 'window',
         ])
       );
-      expect(keys).toHaveLength(7);
+      expect(keys).toHaveLength(6);
     });
 
     it('each device has pin and state fields', () => {
@@ -62,7 +62,6 @@ describe('Firestore Database', () => {
       expect(INITIAL_DEVICE_DATA.buzzer.state).toBe('off');
       expect(INITIAL_DEVICE_DATA.fan_INA.state).toBe('off');
       expect(INITIAL_DEVICE_DATA.fan_INB.state).toBe('off');
-      expect(INITIAL_DEVICE_DATA.orange_light.state).toBe('off');
       expect(INITIAL_DEVICE_DATA.white_light.state).toBe('off');
     });
   });
@@ -228,20 +227,20 @@ describe('Firestore Database', () => {
     });
   });
 
-  // ── Yellow LED Updates ───────────────────────────────────────────────────
+  // ── Orange Light Updates ─────────────────────────────────────────────────
 
-  describe('Yellow LED slider updates', () => {
+  describe('Orange Light slider updates', () => {
     it('converts percentage (0-100) to 8-bit value (0-255)', async () => {
       mockUpdateDoc.mockResolvedValue(undefined);
       const { db } = require('../../utils/firebaseConfig');
       const { doc, updateDoc } = require('firebase/firestore');
 
       // 50% → 128 (rounded)
-      await updateDoc(doc(db, 'devices', 'arduino'), { 'yellow_led.value': 128 });
+      await updateDoc(doc(db, 'devices', 'arduino'), { 'orange_light.value': 128 });
 
       expect(mockUpdateDoc).toHaveBeenCalledWith(
         expect.objectContaining({ path: 'devices/arduino' }),
-        { 'yellow_led.value': 128 }
+        { 'orange_light.value': 128 }
       );
     });
 
@@ -252,11 +251,11 @@ describe('Firestore Database', () => {
 
       // Slider input should be clamped before sending
       const clampedValue = Math.max(0, Math.min(255, 300));
-      await updateDoc(doc(db, 'devices', 'arduino'), { 'yellow_led.value': clampedValue });
+      await updateDoc(doc(db, 'devices', 'arduino'), { 'orange_light.value': clampedValue });
 
       expect(mockUpdateDoc).toHaveBeenCalledWith(
         expect.objectContaining({ path: 'devices/arduino' }),
-        { 'yellow_led.value': 255 }
+        { 'orange_light.value': 255 }
       );
     });
 
@@ -265,11 +264,11 @@ describe('Firestore Database', () => {
       const { db } = require('../../utils/firebaseConfig');
       const { doc, updateDoc } = require('firebase/firestore');
 
-      await updateDoc(doc(db, 'devices', 'arduino'), { 'yellow_led.value': 0 });
+      await updateDoc(doc(db, 'devices', 'arduino'), { 'orange_light.value': 0 });
 
       expect(mockUpdateDoc).toHaveBeenCalledWith(
         expect.objectContaining({ path: 'devices/arduino' }),
-        { 'yellow_led.value': 0 }
+        { 'orange_light.value': 0 }
       );
     });
 
@@ -278,11 +277,11 @@ describe('Firestore Database', () => {
       const { db } = require('../../utils/firebaseConfig');
       const { doc, updateDoc } = require('firebase/firestore');
 
-      await updateDoc(doc(db, 'devices', 'arduino'), { 'yellow_led.value': 255 });
+      await updateDoc(doc(db, 'devices', 'arduino'), { 'orange_light.value': 255 });
 
       expect(mockUpdateDoc).toHaveBeenCalledWith(
         expect.objectContaining({ path: 'devices/arduino' }),
-        { 'yellow_led.value': 255 }
+        { 'orange_light.value': 255 }
       );
     });
 
@@ -292,7 +291,7 @@ describe('Firestore Database', () => {
       const { doc, updateDoc } = require('firebase/firestore');
 
       await expect(
-        updateDoc(doc(db, 'devices', 'arduino'), { 'yellow_led.value': 128 })
+        updateDoc(doc(db, 'devices', 'arduino'), { 'orange_light.value': 128 })
       ).rejects.toThrow('network-error');
     });
   });
@@ -418,13 +417,13 @@ describe('Firestore Database', () => {
 
       await Promise.all([
         updateDoc(docRef, { 'white_light.state': 'on' }),
-        updateDoc(docRef, { 'orange_light.state': 'off' }),
+        updateDoc(docRef, { 'buzzer.state': 'off' }),
         updateDoc(docRef, { 'door.state': 'open' }),
       ]);
 
       expect(mockUpdateDoc).toHaveBeenCalledTimes(3);
       expect(mockUpdateDoc).toHaveBeenCalledWith(docRef, { 'white_light.state': 'on' });
-      expect(mockUpdateDoc).toHaveBeenCalledWith(docRef, { 'orange_light.state': 'off' });
+      expect(mockUpdateDoc).toHaveBeenCalledWith(docRef, { 'buzzer.state': 'off' });
       expect(mockUpdateDoc).toHaveBeenCalledWith(docRef, { 'door.state': 'open' });
     });
 
@@ -456,7 +455,7 @@ describe('Firestore Database', () => {
 
       const results = await Promise.allSettled([
         updateDoc(docRef, { 'white_light.state': 'on' }),
-        updateDoc(docRef, { 'orange_light.state': 'off' }),
+        updateDoc(docRef, { 'buzzer.state': 'off' }),
       ]);
 
       expect(results[0].status).toBe('fulfilled');
@@ -475,7 +474,7 @@ describe('Firestore Database', () => {
           'fan_INA.state': 'on',
           'fan_INB.state': 'off',
         }),
-        updateDoc(docRef, { 'yellow_led.value': 200 }),
+        updateDoc(docRef, { 'orange_light.value': 200 }),
       ]);
 
       expect(mockUpdateDoc).toHaveBeenCalledTimes(2);
@@ -528,7 +527,6 @@ describe('Firestore Database', () => {
           door: expect.any(Object),
           fan_INA: expect.any(Object),
           fan_INB: expect.any(Object),
-          orange_light: expect.any(Object),
           white_light: expect.any(Object),
           window: expect.any(Object),
         })

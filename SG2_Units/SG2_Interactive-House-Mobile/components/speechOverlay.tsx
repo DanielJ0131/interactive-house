@@ -79,10 +79,6 @@ export default function SpeechOverlay() {
     // if (lower.includes("relay on") || lower.includes("relay off"))
     //   hub.toggleDevice?.("relay")
 
-    if (lower.includes("Orange") || lower.includes("orange")) {
-     hub.toggleDevice?.("orange_light" as any);
-    }
-
  if (lower.includes("White") || lower.includes("white")) {
     hub.toggleDevice?.("white_light" as any);
      }

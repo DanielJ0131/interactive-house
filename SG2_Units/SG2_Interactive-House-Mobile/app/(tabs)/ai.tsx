@@ -19,7 +19,6 @@ type Message = { id: string; text: string; sender: "user" | "ai" };
 
 type DeviceKey =
   | "white_light"
-  | "orange_light"
   | "fan_INA"
   | "door"
   | "window"
@@ -41,7 +40,6 @@ type AICommand =
 
 const DEVICE_RULES: Record<DeviceKey, DeviceState[]> = {
   white_light: ["on", "off"],
-  orange_light: ["on", "off"],
   fan_INA: ["on", "off"],
   buzzer: ["on", "off"],
   door: ["open", "closed"],
@@ -147,7 +145,6 @@ Rules:
 
 Supported devices and states:
 - white_light: on, off
-- orange_light: on, off
 - fan_INA: on, off
 - buzzer: on, off
 - door: open, closed

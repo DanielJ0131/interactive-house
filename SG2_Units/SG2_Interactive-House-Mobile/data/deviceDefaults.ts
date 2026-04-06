@@ -9,7 +9,6 @@ export interface DeviceData {
   door: DeviceState;
   fan_INA: DeviceState;
   fan_INB: DeviceState;
-  orange_light: DeviceState;
   white_light: DeviceState;
   window: DeviceState;
 }
@@ -34,11 +33,6 @@ export const INITIAL_DEVICE_DATA: DeviceData = {
     state: "off",
     value: null,
     pin: "6"
-  },
-  orange_light: {
-    state: "off",
-    value: "0",
-    pin: "5"
   },
   white_light: {
     state: "off",

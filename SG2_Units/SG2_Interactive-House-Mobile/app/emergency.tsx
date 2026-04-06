@@ -66,7 +66,7 @@ export default function EmergencyScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <Modal transparent visible={state === 'confirm'} animationType="fade">
+      <Modal transparent visible={state === 'confirm'} animationType="none">
         <View style={[styles.modalOverlay, { backgroundColor: theme.colors.overlay }]}>
           <View style={[styles.modalBox, { backgroundColor: theme.colors.surface, borderColor: theme.colors.dangerSoft }]}>
             <View style={[styles.iconWrap, { backgroundColor: theme.colors.dangerSoft }]}>

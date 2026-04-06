@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
-import { onSnapshot, updateDoc, doc, getDoc } from 'firebase/firestore';
+import { onSnapshot, updateDoc, doc, getDoc, deleteField } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '../../utils/firebaseConfig';
 import { ARDUINO_DOC_ID, getArduinoDevicesDocRef } from '../../utils/firestorePaths';
@@ -33,6 +33,8 @@ type Telemetry = {
   steam?: number;
   motion?: number;
   gas?: number;
+  soil?: number;
+  light?: number;
 };
 
 type SyncData = {
@@ -46,13 +48,12 @@ type SyncData = {
 type DevicesDoc = {
   telemetry?: Telemetry;
   sync?: SyncData;
-  yellow_led?: {
+  orange_light?: {
     value?: number;
   };
   fan_INA?: HardwareDevice;
   fan_INB?: HardwareDevice;
   white_light?: HardwareDevice;
-  orange_light?: HardwareDevice;
   door?: HardwareDevice;
   buzzer?: HardwareDevice;
   window?: HardwareDevice;
@@ -60,7 +61,6 @@ type DevicesDoc = {
 
 type DeviceKey =
   | 'white_light'
-  | 'orange_light'
   | 'fan_INA'
   | 'fan_INB'
   | 'door'
@@ -74,7 +74,6 @@ const DEVICE_CONFIG: Array<{
   interactive?: boolean;
 }> = [
   { key: 'white_light', label: 'White Light', icon: 'lightbulb-outline', interactive: true },
-  { key: 'orange_light', label: 'Orange Light', icon: 'lightbulb-on-outline', interactive: true },
   { key: 'fan_INA', label: 'Fan', icon: 'fan', interactive: true },
   { key: 'door', label: 'Door', icon: 'door', interactive: true },
   { key: 'window', label: 'Window', icon: 'window-closed-variant', interactive: true },
@@ -85,10 +84,14 @@ const TELEMETRY_CONFIG: Array<{
   key: keyof Telemetry;
   label: string;
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+  threshold: number;
+  inclusive?: boolean;
 }> = [
-  { key: 'motion', label: 'Motion', icon: 'motion-sensor' },
-  { key: 'steam', label: 'Steam', icon: 'weather-fog' },
-  { key: 'gas', label: 'Gas', icon: 'molecule' },
+  { key: 'motion', label: 'Motion', icon: 'motion-sensor', threshold: 1, inclusive: true },
+  { key: 'steam', label: 'Steam', icon: 'weather-fog', threshold: 0 },
+  { key: 'gas', label: 'Gas', icon: 'molecule', threshold: 2 },
+  { key: 'soil', label: 'Soil', icon: 'sprout-outline', threshold: 0 },
+  { key: 'light', label: 'Light', icon: 'white-balance-sunny', threshold: 0 },
 ];
 
 const AnimatedFanIcon = memo(
@@ -173,16 +176,177 @@ const AnimatedFanIcon = memo(
   }
 );
 
+const AnimatedWalkingIcon = memo(
+  ({ active, color }: { active: boolean; color: string }) => {
+    const progress = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      progress.stopAnimation();
+
+      if (!active) {
+        progress.setValue(0);
+        return;
+      }
+
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(progress, {
+            toValue: 1,
+            duration: 420,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+          Animated.timing(progress, {
+            toValue: 0,
+            duration: 420,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+        ])
+      );
+
+      loop.start();
+
+      return () => {
+        loop.stop();
+      };
+    }, [active, progress]);
+
+    const translateX = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [-2, 2],
+    });
+
+    const rotate = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['-5deg', '5deg'],
+    });
+
+    return (
+      <Animated.View style={{ transform: [{ translateX }, { rotate }] }}>
+        <MaterialCommunityIcons name="walk" size={20} color={color} />
+      </Animated.View>
+    );
+  }
+);
+
+const AnimatedSteamIcon = memo(
+  ({ active, color }: { active: boolean; color: string }) => {
+    const progress = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      progress.stopAnimation();
+
+      if (!active) {
+        progress.setValue(0);
+        return;
+      }
+
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(progress, {
+            toValue: 1,
+            duration: 700,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+          Animated.timing(progress, {
+            toValue: 0,
+            duration: 700,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+        ])
+      );
+
+      loop.start();
+
+      return () => {
+        loop.stop();
+      };
+    }, [active, progress]);
+
+    const translateY = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [1.5, -1.5],
+    });
+
+    const opacity = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.75, 1],
+    });
+
+    return (
+      <Animated.View style={{ transform: [{ translateY }], opacity }}>
+        <MaterialCommunityIcons name="weather-fog" size={20} color={color} />
+      </Animated.View>
+    );
+  }
+);
+
+const AnimatedGasIcon = memo(
+  ({ active, color }: { active: boolean; color: string }) => {
+    const progress = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      progress.stopAnimation();
+
+      if (!active) {
+        progress.setValue(0);
+        return;
+      }
+
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(progress, {
+            toValue: 1,
+            duration: 460,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+          Animated.timing(progress, {
+            toValue: 0,
+            duration: 460,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+        ])
+      );
+
+      loop.start();
+
+      return () => {
+        loop.stop();
+      };
+    }, [active, progress]);
+
+    const scale = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.97, 1.03],
+    });
+
+    const rotate = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['-4deg', '4deg'],
+    });
+
+    return (
+      <Animated.View style={{ transform: [{ scale }, { rotate }] }}>
+        <MaterialCommunityIcons name="molecule" size={20} color={color} />
+      </Animated.View>
+    );
+  }
+);
+
 const MOCK_GUEST_DEVICES: DevicesDoc = {
   white_light: { pin: 'D13', state: 'off', value: null },
-  orange_light: { pin: 'D12', state: 'off', value: null },
   fan_INA: { pin: 'D9', state: 'off', value: null },
   fan_INB: { pin: 'D8', state: 'off', value: null },
   door: { pin: 'D7', state: 'closed', value: null },
   window: { pin: 'D6', state: 'closed', value: null },
   buzzer: { pin: 'D5', state: 'off', value: null },
-  yellow_led: { value: 0 },
-  telemetry: { steam: 0, motion: 0, gas: 0 },
+  orange_light: { value: 0 },
+  telemetry: { steam: 0, motion: 0, gas: 0, soil: 0, light: 0 },
   sync: {
     lastSource: 'Guest Demo',
     lastUpdatedAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
@@ -197,11 +361,11 @@ export default function DatabaseScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isReversingFan, setIsReversingFan] = useState(false);
-  const [yellowLedPercent, setYellowLedPercent] = useState(0);
+  const [orangeLedPercent, setOrangeLedPercent] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
   const user = auth.currentUser;
 
-  const yellowLedRaw = Number(deviceData?.yellow_led?.value ?? 0);
+  const orangeLedRaw = Number(deviceData?.orange_light?.value ?? 0);
 
   // Check user admin role
   useEffect(() => {
@@ -267,9 +431,9 @@ export default function DatabaseScreen() {
   }, [isGuest, guestDeviceData]);
 
   useEffect(() => {
-    const clampedRaw = Math.max(0, Math.min(255, Number.isFinite(yellowLedRaw) ? yellowLedRaw : 0));
-    setYellowLedPercent(Math.round((clampedRaw / 255) * 100));
-  }, [yellowLedRaw]);
+    const clampedRaw = Math.max(0, Math.min(255, Number.isFinite(orangeLedRaw) ? orangeLedRaw : 0));
+    setOrangeLedPercent(Math.round((clampedRaw / 255) * 100));
+  }, [orangeLedRaw]);
 
 
   const toggleDevice = useCallback(
@@ -429,7 +593,7 @@ useEffect(() => {
   };
 }, [toggleDevice, reverseFan]);
 
-  const updateYellowLed = useCallback(async (percent: number) => {
+  const updateOrangeLed = useCallback(async (percent: number) => {
     try {
       const clampedPercent = Math.max(0, Math.min(100, percent));
       const rawValue = Math.round((clampedPercent / 100) * 255);
@@ -438,18 +602,19 @@ useEffect(() => {
         // Guest mode: update local state only
         setGuestDeviceData((prev) => ({
           ...prev,
-          yellow_led: { value: rawValue },
+          orange_light: { value: rawValue },
         }));
         return;
       }
 
       const docRef = getArduinoDevicesDocRef(db);
       await updateDoc(docRef, {
-        'yellow_led.value': rawValue,
+        'orange_light.value': rawValue,
+        'orange_light.state': deleteField(),
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
-      Alert.alert('Yellow LED Error', message);
+      Alert.alert('Orange Light Error', message);
     }
   }, [isGuest]);
 
@@ -520,10 +685,10 @@ useEffect(() => {
             );
           })}
 
-        <YellowLedCard
-          percent={yellowLedPercent}
-          onChange={setYellowLedPercent}
-          onSlidingComplete={updateYellowLed}
+        <OrangeLedCard
+          percent={orangeLedPercent}
+          onChange={setOrangeLedPercent}
+          onSlidingComplete={updateOrangeLed}
         />
 
         {displayData?.telemetry && (
@@ -537,8 +702,12 @@ useEffect(() => {
                 <TelemetryCard
                   key={sensor.key}
                   label={sensor.label}
+                  sensorKey={sensor.key}
                   icon={sensor.icon}
                   value={displayData.telemetry?.[sensor.key] ?? 0}
+                  isActive={sensor.inclusive
+                    ? (displayData.telemetry?.[sensor.key] ?? 0) >= sensor.threshold
+                    : (displayData.telemetry?.[sensor.key] ?? 0) > sensor.threshold}
                   activeText="Detected"
                   inactiveText="Clear"
                 />
@@ -594,7 +763,7 @@ useEffect(() => {
   );
 }
 
-function YellowLedCard({
+function OrangeLedCard({
   percent,
   onChange,
   onSlidingComplete,
@@ -621,7 +790,7 @@ function YellowLedCard({
           </View>
 
           <View className="flex-1">
-            <Text style={{ color: theme.colors.text }} className="text-lg font-bold">Yellow LED</Text>
+            <Text style={{ color: theme.colors.text }} className="text-lg font-bold">Orange Light</Text>
             <Text style={{ color: theme.colors.mutedText }} className="text-xs font-medium mt-1">Brightness</Text>
           </View>
         </View>
@@ -666,20 +835,24 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 }
 
 function TelemetryCard({
+  sensorKey,
   label,
   icon,
   value,
+  isActive,
   activeText,
   inactiveText,
 }: {
+  sensorKey: keyof Telemetry;
   label: string;
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
   value: number;
+  isActive: boolean;
   activeText: string;
   inactiveText: string;
 }) {
   const { theme } = useAppTheme();
-  const isActive = value > 2;
+  const iconColor = isActive ? theme.colors.danger : theme.colors.secondaryAccent;
 
   return (
     <View
@@ -691,14 +864,25 @@ function TelemetryCard({
       className="p-5 rounded-3xl mb-4 border"
     >
       <View
-        style={{ backgroundColor: isActive ? theme.colors.dangerSoft : theme.colors.secondaryAccentSoft }}
+        style={{
+          backgroundColor: isActive ? theme.colors.dangerSoft : theme.colors.secondaryAccentSoft,
+          overflow: 'hidden',
+        }}
         className="h-10 w-10 rounded-xl items-center justify-center mb-3"
       >
-        <MaterialCommunityIcons
-          name={icon}
-          size={20}
-          color={isActive ? theme.colors.danger : theme.colors.secondaryAccent}
-        />
+        {sensorKey === 'motion' && isActive ? (
+          <AnimatedWalkingIcon active={isActive} color={iconColor} />
+        ) : sensorKey === 'steam' && isActive ? (
+          <AnimatedSteamIcon active={isActive} color={iconColor} />
+        ) : sensorKey === 'gas' && isActive ? (
+          <AnimatedGasIcon active={isActive} color={iconColor} />
+        ) : (
+          <MaterialCommunityIcons
+            name={icon}
+            size={20}
+            color={iconColor}
+          />
+        )}
       </View>
 
       <Text style={{ color: theme.colors.text }} className="font-bold" numberOfLines={1}>
