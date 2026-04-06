@@ -40,6 +40,8 @@ const mockDeviceData = {
     steam: 0,
     motion: 0,
     gas: 1,
+    soil: 50,
+    light: 100,
   },
   sync: {
     lastUpdatedAt: {
@@ -253,6 +255,8 @@ describe('Hub Screen', () => {
       expect(getByText('Motion')).toBeTruthy();
       expect(getByText('Steam')).toBeTruthy();
       expect(getByText('Gas')).toBeTruthy();
+      expect(getByText('Soil')).toBeTruthy();
+      expect(getByText('Light')).toBeTruthy();
     });
   });
 
@@ -263,7 +267,7 @@ describe('Hub Screen', () => {
       expect(getByText('Gas')).toBeTruthy();
     });
 
-    // Gas is 1 (<3), Motion is 0 (<1), Steam is 0 (not >0)
+    // Gas is 1 (<6), Motion is 0 (<1), Steam is 0 (not >500), Soil is 50 (not >50), Light is 100 (not >100)
     expect(queryByText('Detected')).toBeNull();
   });
 
@@ -274,7 +278,7 @@ describe('Hub Screen', () => {
           exists: () => true,
           data: () => ({
             ...mockDeviceData,
-            telemetry: { steam: 1, motion: 1, gas: 3 },
+            telemetry: { steam: 501, motion: 1, gas: 6, soil: 51, light: 101 },
           }),
         });
         return jest.fn();
@@ -287,7 +291,7 @@ describe('Hub Screen', () => {
       expect(getByText('Steam')).toBeTruthy();
     });
 
-    expect(getAllByText('Detected')).toHaveLength(3);
+    expect(getAllByText('Detected')).toHaveLength(5);
   });
 
   // ── Sync Status Display ──────────────────────────────────────────────────

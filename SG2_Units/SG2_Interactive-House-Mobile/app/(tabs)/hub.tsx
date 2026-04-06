@@ -88,10 +88,10 @@ const TELEMETRY_CONFIG: Array<{
   inclusive?: boolean;
 }> = [
   { key: 'motion', label: 'Motion', icon: 'motion-sensor', threshold: 1, inclusive: true },
-  { key: 'steam', label: 'Steam', icon: 'weather-fog', threshold: 0 },
-  { key: 'gas', label: 'Gas', icon: 'molecule', threshold: 2 },
-  { key: 'soil', label: 'Soil', icon: 'sprout-outline', threshold: 0 },
-  { key: 'light', label: 'Light', icon: 'white-balance-sunny', threshold: 0 },
+  { key: 'steam', label: 'Steam', icon: 'weather-fog', threshold: 500 },
+  { key: 'gas', label: 'Gas', icon: 'molecule', threshold: 5 },
+  { key: 'soil', label: 'Soil', icon: 'sprout-outline', threshold: 50 },
+  { key: 'light', label: 'Light', icon: 'white-balance-sunny', threshold: 100 },
 ];
 
 const AnimatedFanIcon = memo(
