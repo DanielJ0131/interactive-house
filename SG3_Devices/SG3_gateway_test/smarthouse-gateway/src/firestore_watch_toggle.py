@@ -20,6 +20,7 @@ if not os.path.isabs(SERVICE_ACCOUNT_PATH):
     SERVICE_ACCOUNT_PATH = os.path.join(PROJECT_ROOT, SERVICE_ACCOUNT_PATH)
     
 WATCH_DOC = os.getenv("WATCH_DOC")
+MUSIC_COLLECTION = os.getenv("MUSIC_COLLECTION", "music")
 
 cred = credentials.Certificate(SERVICE_ACCOUNT_PATH)
 firebase_admin.initialize_app(cred)
@@ -39,6 +40,8 @@ last_fan_ina = None
 last_fan_inb = None
 last_white_light = None
 last_orange_light = None
+last_song_states = {}
+active_song_id = None
 
 def norm(v):
     if v is None: return None
@@ -77,6 +80,24 @@ def to_int(v):
     except (TypeError, ValueError):
         return None
 
+def to_brightness(v):
+    if v is None:
+        return None
+
+    if isinstance(v, bool):
+        return 255 if v else 0
+
+    value = to_int(v)
+    if value is not None:
+        return max(0, min(255, value))
+
+    v = norm(v)
+    if v in ("on", "true", "yes", "enabled"):
+        return 255
+    if v in ("off", "false", "no", "disabled"):
+        return 0
+    return None
+
 def get_state(data, key):
     return extract_field_value(data.get(key))
 
@@ -92,6 +113,90 @@ def parse_state_line(line):
         key, value = token.split("=", 1)
         state[key.strip().lower()] = value.strip().lower()
     return state
+
+def parse_song_arrays(song_doc):
+    """Return validated (frequencies, note_delays) from one music document."""
+    frequencies = song_doc.get("frequencies")
+    note_delays = song_doc.get("noteDelays")
+
+    if not isinstance(frequencies, list) or not isinstance(note_delays, list):
+        return None, None
+    if len(frequencies) == 0 or len(frequencies) != len(note_delays):
+        return None, None
+
+    cleaned_freq = []
+    cleaned_delays = []
+    for freq, delay in zip(frequencies, note_delays):
+        try:
+            f = int(freq)
+            d = int(delay)
+        except (TypeError, ValueError):
+            return None, None
+
+        if d <= 0:
+            return None, None
+
+        cleaned_freq.append(f)
+        cleaned_delays.append(d)
+
+    return cleaned_freq, cleaned_delays
+
+def send_song(note_list, duration_list):
+    """Send song payload in chunks: C, A:freq,delay..., E."""
+    sc.send_line("C")
+    time.sleep(0.03)
+
+    for n, d in zip(note_list, duration_list):
+        sc.send_line(f"A:{int(n)},{int(d)}")
+        # Slightly slower pacing avoids serial overrun on Arduino UNO for long songs.
+        time.sleep(0.012)
+
+    sc.send_line("E")
+    print(f"Sent song payload ({len(note_list)} notes)")
+
+def handle_music_change(song_id, song_data):
+    """Start/stop song playback based on Firestore music doc state changes."""
+    global active_song_id
+
+    state = to_on_off(get_state(song_data, "state"))
+    if state is None:
+        state = to_on_off(song_data.get("state"))
+
+    previous = last_song_states.get(song_id)
+
+    # Prime cache on first snapshot so only real changes trigger actions.
+    if previous is None:
+        last_song_states[song_id] = state
+        return
+
+    if state == "on":
+        frequencies, note_delays = parse_song_arrays(song_data)
+        if frequencies is None:
+            print(f"Ignored music/{song_id}: invalid frequencies/noteDelays")
+            last_song_states[song_id] = state
+            return
+
+        # Upload/start only on OFF -> ON transition.
+        if previous != "on":
+            send_song(frequencies, note_delays)
+            sc.send_line("P:1")
+            active_song_id = song_id
+            print(f"Started song music/{song_id}")
+
+    elif state == "off":
+        if previous == "on" and active_song_id == song_id:
+            sc.send_line("P:0")
+            active_song_id = None
+            print(f"Stopped song music/{song_id}")
+
+    last_song_states[song_id] = state
+
+def on_music_snapshot(col_snapshot, changes, read_time):
+    with state_lock:
+        # Process all docs to keep logic robust even if change metadata varies.
+        for doc in col_snapshot:
+            song_data = doc.to_dict() or {}
+            handle_music_change(doc.id, song_data)
 
 def sync_arduino_to_firestore(state):
     """Write Arduino physical state to Firestore (button presses, sensors)."""
@@ -114,7 +219,7 @@ def sync_arduino_to_firestore(state):
     fan_ina = state.get("fan_ina")
     fan_inb = state.get("fan_inb")
     white_light = state.get("white_light")
-    orange_light = state.get("orange_light")
+    orange_light = to_brightness(state.get("orange_light"))
 
     if door in ("open", "close") and should_update("door", door):
         updates["door.state"] = door
@@ -134,18 +239,26 @@ def sync_arduino_to_firestore(state):
     if white_light in ("on", "off") and should_update("white_light", white_light):
         updates["white_light.state"] = white_light
         last_synced_state["white_light"] = white_light
-    if orange_light in ("on", "off") and should_update("orange_light", orange_light):
-        updates["orange_light.state"] = orange_light
+    if orange_light is not None and should_update("orange_light", orange_light):
+        updates["orange_light.value"] = orange_light
         last_synced_state["orange_light"] = orange_light
 
     # Sensor telemetry
     gas = to_int(state.get("gas"))
+    light = to_int(state.get("light"))
+    soil = to_int(state.get("soil"))
     steam = to_int(state.get("steam"))
     motion = to_int(state.get("motion"))
 
     if gas is not None and should_update("gas", gas):
         updates["telemetry.gas"] = gas
         last_synced_state["gas"] = gas
+    if light is not None and should_update("light", light):
+        updates["telemetry.light"] = light
+        last_synced_state["light"] = light
+    if soil is not None and should_update("soil", soil):
+        updates["telemetry.soil"] = soil
+        last_synced_state["soil"] = soil
     if steam is not None and should_update("steam", steam):
         updates["telemetry.steam"] = steam
         last_synced_state["steam"] = steam
@@ -175,7 +288,7 @@ def sync_arduino_to_firestore(state):
                 last_fan_inb = fan_inb
             if white_light in ("on", "off"):
                 last_white_light = white_light
-            if orange_light in ("on", "off"):
+            if orange_light is not None:
                 last_orange_light = orange_light
         print("Arduino -> Firebase:", updates)
     except Exception as exc:
@@ -197,6 +310,8 @@ def arduino_listener():
         state = parse_state_line(line)
         if state:
             sync_arduino_to_firestore(state)
+        else:
+            print("Arduino:", line)
 
 def on_snapshot(doc_snapshot, changes, read_time):
     global last_fan, last_door, last_window, last_msg, last_buzzer, last_fan_ina, last_fan_inb, last_white_light, last_orange_light
@@ -221,7 +336,7 @@ def on_snapshot(doc_snapshot, changes, read_time):
             
             # Get light states from nested objects
             white_light = to_on_off(get_state(data, "white_light"))
-            orange_light = to_on_off(get_state(data, "orange_light"))
+            orange_light = to_brightness(get_state(data, "orange_light"))
 
             if raw_door is not None and door is None:
                 print("Ignored unsupported door value:", raw_door)
@@ -292,13 +407,13 @@ def on_snapshot(doc_snapshot, changes, read_time):
                     print("Toggled WHITE LIGHT ->", white_light)
 
             # ORANGE LIGHT: toggle only when it CHANGES (ignore first snapshot)
-            if orange_light in ("on", "off"):
+            if orange_light is not None:
                 if last_orange_light is None:
                     last_orange_light = orange_light
                 elif orange_light != last_orange_light:
-                    sc.send_line("O")
+                    sc.send_line(f"O:{orange_light}")
                     last_orange_light = orange_light
-                    print("Toggled ORANGE LIGHT ->", orange_light)
+                    print("Set ORANGE LIGHT ->", orange_light)
 
             # LCD demo (optional)
             if isinstance(msg, str):
@@ -310,9 +425,11 @@ def on_snapshot(doc_snapshot, changes, read_time):
                     print("LCD updated")
 
 watch = doc_ref.on_snapshot(on_snapshot)
+music_watch = db.collection(MUSIC_COLLECTION).on_snapshot(on_music_snapshot)
 listener_thread = threading.Thread(target=arduino_listener, daemon=True)
 listener_thread.start()
 
 print("Watching:", WATCH_DOC, "(bidirectional sync active)")
+print("Watching music collection:", MUSIC_COLLECTION)
 while True:
     time.sleep(10)
