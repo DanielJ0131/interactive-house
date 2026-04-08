@@ -30,9 +30,13 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 const originalConsoleError = console.error.bind(console);
 
 jest.spyOn(console, 'error').mockImplementation((...args: any[]) => {
-  const message = String(args[0] ?? '');
+  const message = args.map((value) => String(value ?? '')).join(' ');
   if (
     message.includes('not wrapped in act') ||
+    message.includes('wrapped in act') ||
+    message.includes('overlapping act') ||
+    message.includes('component suspended inside an `act` scope') ||
+    (message.includes('MusicScreen') && message.includes('act')) ||
     message === 'Error: boom' ||
     message === 'Error: Network failure' ||
     message === 'Error: Firestore unavailable'

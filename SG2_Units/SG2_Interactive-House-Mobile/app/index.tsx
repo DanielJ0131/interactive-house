@@ -78,7 +78,7 @@ export default function WelcomeScreen() {
       <View className="flex-1 px-8 justify-between py-12">
         <View className="items-center mt-10">
           <View style={{ backgroundColor: theme.colors.accentSoft }} className="p-5 rounded-[32px] mb-6">
-             <MaterialCommunityIcons name="home-assistant" size={64} color={theme.colors.accent} />
+             <MaterialCommunityIcons name="home-outline" size={64} color={theme.colors.accent} />
           </View>
           <Text style={{ color: theme.colors.text }} className="text-4xl font-black tracking-tight text-center uppercase">
             Interactive House
