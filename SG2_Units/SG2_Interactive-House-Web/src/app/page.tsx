@@ -1,7 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
+
+import Icon from '@mdi/react';
+import { mdiHomeOutline } from '@mdi/js';
+
 
 export default function Home() {
   return (
@@ -14,15 +17,10 @@ export default function Home() {
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-[430px] flex-col px-6 pb-10 pt-12">
 
-        {/* --- LOGO SECTION (Fixed Placement) --- */}
-        <div className="mx-auto mt-16 flex h-24 w-24 items-center justify-center rounded-3xl bg-white/5 shadow-xl border border-white/10 overflow-hidden">
-          <Image
-            src="/se.png"
-            alt="Interactive House Logo"
-            width={80}
-            height={80}
-            className="object-contain rounded-full"
-          />
+        {/* --- LOGO SECTION --- */}
+        <div className="mx-auto mt-16 flex h-24 w-24 items-center justify-center rounded-3xl bg-white/5 shadow-xl border border-white/10 overflow-hidden backdrop-blur-sm">
+          {/* 2. The Icon Logo */}
+          <Icon path={mdiHomeOutline} size={3} />
         </div>
 
         {/* --- TEXT CONTENT --- */}
