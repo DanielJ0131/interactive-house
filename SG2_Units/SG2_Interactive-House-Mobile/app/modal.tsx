@@ -8,9 +8,11 @@ import { onSnapshotsInSync } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '../utils/firebaseConfig';
 import { useGuest } from '../utils/GuestContext';
+import { THEME_OPTIONS, useAppTheme } from '../utils/AppThemeContext';
 
 export default function ModalScreen() {
   const { isGuest } = useGuest();
+  const { theme, mode, setMode } = useAppTheme();
   const [isConnected, setIsConnected] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
@@ -53,35 +55,36 @@ export default function ModalScreen() {
   const isSystemReady = !isGuest && isConnected && isLoggedIn;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#020617' }}>
-      <StatusBar style="light" />
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <StatusBar style="light" backgroundColor={theme.colors.background} />
       
       {/* Back Button */}
       <View className="absolute top-12 left-6 z-10">
         <Pressable 
           onPress={() => router.back()}
-          className="bg-slate-900/80 border border-slate-800 p-3 rounded-full active:bg-slate-800"
+          style={{ backgroundColor: theme.colors.chipBackground, borderColor: theme.colors.border }}
+          className="border p-3 rounded-full"
         >
-          <MaterialCommunityIcons name="chevron-left" size={28} color="white" />
+          <MaterialCommunityIcons name="chevron-left" size={28} color={theme.colors.text} />
         </Pressable>
       </View>
       
       <ScrollView contentContainerStyle={{ padding: 24, paddingTop: 100 }} bounces={false}>
         <View className="items-center mb-10 mt-4">
-          <View className={`p-6 rounded-full mb-4 ${isSystemReady ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+          <View style={{ backgroundColor: isSystemReady ? theme.colors.successSoft : theme.colors.dangerSoft }} className="p-6 rounded-full mb-4">
             {isChecking ? (
-              <ActivityIndicator size="large" color="#0ea5e9" />
+              <ActivityIndicator size="large" color={theme.colors.accent} />
             ) : (
               <MaterialCommunityIcons 
                 name={isSystemReady ? "shield-check" : "shield-alert-outline"} 
                 size={56} 
-                color={isSystemReady ? "#22c55e" : "#ef4444"} 
+                color={isSystemReady ? theme.colors.success : theme.colors.danger} 
               />
             )}
           </View>
           
-          <Text className="text-white text-3xl font-extrabold text-center">System Status</Text>
-          <Text className="text-slate-500 text-center text-lg mt-2">
+          <Text style={{ color: theme.colors.text }} className="text-3xl font-extrabold text-center">System Status</Text>
+          <Text style={{ color: theme.colors.mutedText }} className="text-center text-lg mt-2">
             {isChecking 
               ? "Verifying house credentials..." 
               : isGuest
@@ -94,39 +97,96 @@ export default function ModalScreen() {
           </Text>
         </View>
 
-        <View className="bg-slate-900/50 border border-slate-800 p-6 rounded-3xl mb-6">
+        <View style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }} className="border p-6 rounded-3xl mb-6">
           {/* Cloud Sync Row */}
           <View className="flex-row justify-between items-center mb-6">
             <View>
-              <Text className="text-white text-lg font-bold">Firestore</Text>
-              <Text className="text-slate-500 text-sm">Cloud Data Sync</Text>
+              <Text style={{ color: theme.colors.text }} className="text-lg font-bold">Firestore</Text>
+              <Text style={{ color: theme.colors.mutedText }} className="text-sm">Cloud Data Sync</Text>
             </View>
-            <View className={`px-4 py-1.5 rounded-full border ${isConnected ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'}`}>
-              <Text className={`font-bold text-xs uppercase tracking-widest ${isConnected ? 'text-green-500' : 'text-red-500'}`}>
+            <View style={{ backgroundColor: isConnected ? theme.colors.successSoft : theme.colors.dangerSoft, borderColor: isConnected ? theme.colors.success : theme.colors.danger }} className="px-4 py-1.5 rounded-full border">
+              <Text style={{ color: isConnected ? theme.colors.success : theme.colors.danger }} className="font-bold text-xs uppercase tracking-widest">
                 {isConnected ? 'Synced' : 'Offline'}
               </Text>
             </View>
           </View>
 
-          <View className="h-[1px] bg-slate-800 mb-6" />
+          <View style={{ backgroundColor: theme.colors.border }} className="h-[1px] mb-6" />
 
           {/* User Auth Row */}
           <View className="flex-row justify-between items-center">
             <View>
-              <Text className="text-white text-lg font-bold">Account</Text>
-              <Text className="text-slate-500 text-sm">{isGuest ? 'Guest Mode' : isLoggedIn ? auth.currentUser?.email : "User Authentication"}</Text>
+              <Text style={{ color: theme.colors.text }} className="text-lg font-bold">Account</Text>
+              <Text style={{ color: theme.colors.mutedText }} className="text-sm">{isGuest ? 'Guest Mode' : isLoggedIn ? auth.currentUser?.email : "User Authentication"}</Text>
             </View>
-            <View className={`px-4 py-1.5 rounded-full border ${isLoggedIn ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'}`}>
-              <Text className={`font-bold text-xs uppercase tracking-widest ${isLoggedIn ? 'text-green-500' : 'text-red-500'}`}>
+            <View style={{ backgroundColor: isLoggedIn ? theme.colors.successSoft : theme.colors.dangerSoft, borderColor: isLoggedIn ? theme.colors.success : theme.colors.danger }} className="px-4 py-1.5 rounded-full border">
+              <Text style={{ color: isLoggedIn ? theme.colors.success : theme.colors.danger }} className="font-bold text-xs uppercase tracking-widest">
                 {isLoggedIn ? 'Auth' : 'Missing'}
               </Text>
             </View>
           </View>
         </View>
+
+        <View style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }} className="border p-6 rounded-3xl mb-6">
+          <View className="flex-row items-center justify-between mb-4">
+            <View>
+              <Text style={{ color: theme.colors.text }} className="text-lg font-bold">Appearance</Text>
+              <Text style={{ color: theme.colors.mutedText }} className="text-sm">Choose a global palette</Text>
+            </View>
+            <View style={{ backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accent }} className="px-3 py-1.5 rounded-full border">
+              <Text style={{ color: theme.colors.accentText }} className="text-[10px] font-black uppercase tracking-widest">
+                {THEME_OPTIONS.find((option) => option.id === mode)?.name ?? 'Theme'}
+              </Text>
+            </View>
+          </View>
+
+          {THEME_OPTIONS.map((option) => {
+            const isSelected = option.id === mode;
+            const previewColors = [option.colors.backgroundAlt, option.colors.accent, option.colors.secondaryAccent];
+
+            return (
+              <Pressable
+                key={option.id}
+                onPress={() => setMode(option.id)}
+                style={{
+                  backgroundColor: isSelected ? theme.colors.selectedSurface : theme.colors.chipBackground,
+                  borderColor: isSelected ? theme.colors.selectedBorder : theme.colors.border,
+                }}
+                className="mb-3 rounded-2xl border p-4"
+              >
+                <View className="flex-row items-start justify-between">
+                  <View className="flex-1 pr-4">
+                    <View className="flex-row items-center mb-1">
+                      <Text style={{ color: theme.colors.text }} className="text-base font-bold">
+                        {option.name}
+                      </Text>
+                      {isSelected && (
+                        <MaterialCommunityIcons name="check-circle" size={18} color={theme.colors.accent} style={{ marginLeft: 8 }} />
+                      )}
+                    </View>
+                    <Text style={{ color: theme.colors.mutedText }} className="text-sm leading-5">
+                      {option.description}
+                    </Text>
+                  </View>
+
+                  <View className="flex-row items-center gap-1">
+                    {previewColors.map((color) => (
+                      <View
+                        key={color}
+                        style={{ backgroundColor: color, borderColor: theme.colors.borderStrong }}
+                        className="h-6 w-6 rounded-full border"
+                      />
+                    ))}
+                  </View>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
       </ScrollView>
 
       <View className="pb-8">
-        <Text className="text-slate-700 text-center text-xs font-bold tracking-tighter uppercase">
+        <Text style={{ color: theme.colors.subtleText }} className="text-center text-xs font-bold tracking-tighter uppercase">
           Interactive House Mobile • v1.0.0
         </Text>
       </View>

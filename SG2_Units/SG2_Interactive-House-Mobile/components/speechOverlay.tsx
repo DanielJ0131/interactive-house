@@ -3,11 +3,16 @@ import { View, Text, Pressable, Alert, PermissionsAndroid, Platform } from "reac
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { hubController } from '../utils/hubController';
 import { useRouter } from "expo-router";
+import { useAppTheme } from '../utils/AppThemeContext';
+import {getMusicController} from '../utils/musicController';
+import { getEmergencyController } from '../utils/emergencyController';
 
 export default function SpeechOverlay() {
   const router = useRouter();
+  const { theme } = useAppTheme();
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const shouldShowTranscriptBubble = isListening || transcript.length > 0;
 
   let SpeechRecognition: any = null;
 
@@ -20,11 +25,16 @@ export default function SpeechOverlay() {
   const isNativeAvailable = !!SpeechRecognition?.ExpoSpeechRecognitionModule;
 
   if (isNativeAvailable) {
-    SpeechRecognition.useSpeechRecognitionEvent("result", (event: any) => {
-      const text = event.results?.[0]?.transcript ?? "";
-      setTranscript(text);
-      handleIntent(text);
-    });
+  SpeechRecognition.useSpeechRecognitionEvent("result", (event: any) => {
+  const result = event.results?.[0];
+  const text = result?.transcript ?? "";
+
+
+  if (result && result.isFinal === false) return;
+
+  setTranscript(text);
+  handleIntent(text);
+});
 
     SpeechRecognition.useSpeechRecognitionEvent("end", () => {
       setIsListening(false);
@@ -34,40 +44,113 @@ export default function SpeechOverlay() {
   const handleIntent = (text: string) => {
     const lower = text.toLowerCase();
     const hub = hubController();
+    const music = getMusicController();
+    const words = lower.split(" ");
+    const emergency = getEmergencyController();
 
-    if  ( lower.includes ("fan On") || lower.includes("turn on fan"))
-      hub.setSlider?.("fan", 100)
+    //test
+    console.log("hub:", hub);
 
-    if (lower.includes("fan Off") || lower.includes("turn off fan"))
-      hub.setSlider?.("fan", 0)
+    // ---------------
+    // Hub Commands
+    // ---------------
 
-    if (lower.includes("reverse fan") || lower.includes("fan reverse"))
-      hub.toggleDirection?.("fan")
 
-    if (lower.includes("buzzer on") || lower.includes(" turn on buzzer"))
-      hub.buzzerPress?.("buzzer", true)
+   if (lower.includes("fan on")) {
+    hub.toggleDevice?.("fan_INA");
+  }
 
-    if (lower.includes("buzzer off") || lower.includes("turn off buzzer"))
-      hub.buzzerPress?.("buzzer", false)
+   if (lower.includes("fan off")) {
+    hub.toggleDevice?.("fan_INA");
+  }
 
-    if (lower.includes("relay on") || lower.includes("relay off"))
-      hub.toggleDevice?.("relay")
+// REVERSE FAN
+    if (lower.includes("reverse fan") || lower.includes("fan reverse")) {
+     hub.toggleDirection?.("fan_INA");
+    }
+     
+    if (lower.includes("Buzzer") || lower.includes("buzzer")) {
+     hub.toggleDevice?.("buzzer" as any);
+     }
 
-    if (lower.includes("yellow") || lower.includes(" yellow LED"))
-      hub.toggleDevice?.("led_yellow")
-
-    if (lower.includes("white") || lower.includes("LED white"))
-      hub.toggleDevice?.("led_white")
-
-    if (lower.includes ("door"))
-      hub.toggleDevice?.("servo_door")
-
-    if (lower.includes("window"))
-      hub.toggleDevice?.("servo_window")
-
-    if (lower.includes("hub")) router.push("/(tabs)/device_hub");
+    // if (lower.includes("Buzzer") || lower.includes("buzzer")) {
+    //  hub.toggleDevice?.("buzzer" as any);
     
-    if (lower.includes("ai")) router.push("/(tabs)/ai");
+    // if (lower.includes("relay on") || lower.includes("relay off"))
+    //   hub.toggleDevice?.("relay")
+
+ if (lower.includes("White") || lower.includes("white")) {
+    hub.toggleDevice?.("white_light" as any);
+     }
+
+    if (lower.includes("door")) {
+     hub.toggleDevice?.("door" as any);
+      }
+
+    if (lower.includes("window")) {
+      hub.toggleDevice?.("window" as any);
+     }  
+    // ---------------
+    // Music Commands
+    // ---------------
+  
+
+   if (!music) return;
+
+   if (lower.includes("mario") || lower.includes("imperial") || lower.includes("pirate")) {
+    music.playSongByName?.(lower);
+   }
+
+   if (lower === "play" || lower.includes("start")) {
+    music.play?.();
+  }
+
+   if (lower.includes("stop")) {
+    music.stop?.();
+ }
+
+
+   if (lower.includes("piano")) {
+    music.setInstrument?.("electric piano");
+ }
+
+   if (lower.includes("square")) {
+   music.setInstrument?.("square");
+ }
+
+   if (lower.includes("saw")) {
+    music.setInstrument?.("sawtooth");
+ }
+
+   if (lower.includes("2x") || lower.includes("fast")) {
+    music.setSpeed?.(2);
+  }
+
+   if (lower.includes("slow")) {
+    music.setSpeed?.(0.5);
+ }
+
+    // ---------------
+    // Navigation Commands
+    // ---------------
+    if (words.includes("ai")) {router.push("/(tabs)/ai");}
+    if (words.includes("music")) {router.push("/(tabs)/music");}
+    if (words.includes("hub") || words.includes("home")) {router.push("/(tabs)/hub");}
+
+    //---------------
+    // Emergency Commands
+    // ---------------
+
+if (
+  lower.includes("emergency") ||
+  lower.includes("help") ||
+  lower.includes("call emergency")
+) {
+router.push("/emergency");
+  setTimeout(() => {
+    emergency.startCall?.();
+  }, 500);
+}
   };
 
   const requestMicPermission = async () => {
@@ -122,23 +205,22 @@ export default function SpeechOverlay() {
     >
       <Pressable
         onPress={isListening ? stopListening : startListening}
-        className={`h-20 w-20 rounded-full items-center justify-center ${
-          isListening ? "bg-red-500/20" : "bg-sky-500/10"
-        }`}
+        style={{ backgroundColor: isListening ? theme.colors.dangerSoft : theme.colors.accentSoft }}
+        className="h-20 w-20 rounded-full items-center justify-center"
       >
         <MaterialCommunityIcons
           name={isListening ? "microphone-off" : "microphone"}
           size={36}
-          color={isListening ? "#ef4444" : "#0ea5e9"}
+          color={isListening ? theme.colors.danger : theme.colors.accent}
         />
       </Pressable>
 
-      {(isListening || transcript) && (
-        <View className="mr-2 bg-slate-900/90 border border-slate-800 px-4 py-3 rounded-2xl max-w-[220px]">
+      {shouldShowTranscriptBubble && (
+        <View style={{ backgroundColor: theme.colors.chipBackground, borderColor: theme.colors.border }} className="mr-2 border px-4 py-3 rounded-2xl max-w-[220px]">
           {transcript ? (
-            <Text className="text-white text-sm">{transcript}</Text>
+            <Text style={{ color: theme.colors.text }} className="text-sm">{transcript}</Text>
           ) : (
-            <Text className="text-slate-400 text-sm">Listening...</Text>
+            <Text style={{ color: theme.colors.mutedText }} className="text-sm">Listening...</Text>
           )}
         </View>
       )}

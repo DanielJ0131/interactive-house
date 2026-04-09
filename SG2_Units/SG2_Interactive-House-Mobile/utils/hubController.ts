@@ -1,10 +1,12 @@
+import { DeviceKey } from "../data/deviceDefaults";
+
 type HubController = {
-    toggleDevice?: (id: string) => void
-    setSlider?: (id: string, value: number) => void
-    buzzerPress?: (id: string, pressed: boolean) => void
-    toggleDirection?: (id: string) => void
-    scrollDown?: () => void
-}
+  toggleDevice?: (id: DeviceKey) => Promise<void>;
+  setSlider?: (id: DeviceKey, value: number) => void;
+  buzzerPress?: (id: DeviceKey, pressed: boolean) => void;
+  toggleDirection?: (id: DeviceKey) => void;
+  scrollDown?: () => void;
+};
 
 const controller: HubController = {}
 

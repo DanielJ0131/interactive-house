@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { DarkTheme, ThemeProvider } from '@react-navigation/native';
+import { ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -8,6 +8,7 @@ import { StatusBar, LogBox, Platform, View } from 'react-native';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GuestProvider } from '../utils/GuestContext';
+import { AppThemeProvider, getNavigationTheme, useAppTheme, THEME_OPTIONS } from '../utils/AppThemeContext';
 import "../global.css";
 
 // 1. SILENCE KNOWN NOISY WARNINGS
@@ -30,18 +31,6 @@ export { ErrorBoundary } from 'expo-router';
 
 export const unstable_settings = {
   initialRouteName: 'index',
-};
-
-// 2. THEME DEFINITION
-const SmartHouseTheme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    background: '#020617', // Slate 950
-    card: '#020617',
-    border: '#1e293b',
-    primary: '#0ea5e9',    // Sky 500
-  },
 };
 
 export default function RootLayout() {
@@ -74,35 +63,38 @@ export default function RootLayout() {
   if (!loaded) return null;
 
   return (
-    <SafeAreaProvider style={{ backgroundColor: '#020617' }}>
-      <GuestProvider>
-        {/* 3. FONT PRE-WARMING 
-          This hidden view "uses" the font immediately. 
-          This prevents the browser's "preload was not used within a few seconds" warning.
-        */}
-        <View style={{ position: 'absolute', opacity: 0, height: 0, width: 0 }}>
-          <MaterialCommunityIcons name="microphone" />
-        </View>
+    <AppThemeProvider>
+      <SafeAreaProvider style={{ backgroundColor: THEME_OPTIONS[0].colors.background }}>
+        <GuestProvider>
+          {/* 3. FONT PRE-WARMING 
+            This hidden view "uses" the font immediately. 
+            This prevents the browser's "preload was not used within a few seconds" warning.
+          */}
+          <View style={{ position: 'absolute', opacity: 0, height: 0, width: 0 }}>
+            <MaterialCommunityIcons name="microphone" />
+          </View>
 
-        <StatusBar
-          barStyle="light-content"
-          backgroundColor="#020617"
-          translucent={false}
-        />
-
-        <RootLayoutNav />
-      </GuestProvider>
-    </SafeAreaProvider>
+          <RootLayoutNav />
+        </GuestProvider>
+      </SafeAreaProvider>
+    </AppThemeProvider>
   );
 }
 
 function RootLayoutNav() {
+  const { theme } = useAppTheme();
+
   return (
-    <ThemeProvider value={SmartHouseTheme}>
+    <ThemeProvider value={getNavigationTheme(theme)}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={theme.colors.background}
+        translucent={false}
+      />
       <Stack
         screenOptions={{
           // Fixes the "white flash" during navigation
-          contentStyle: { backgroundColor: '#020617' },
+          contentStyle: { backgroundColor: theme.colors.background },
 
           // Smoother transitions for both platforms
           animation: 'fade',

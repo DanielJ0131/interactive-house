@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { PageShell } from "@/components/pageShell";
+import Link from "next/link";
 import {
   Bell,
   Cloud,
@@ -12,6 +13,8 @@ import {
   Waves,
   PersonSimpleRun,
   Warning,
+  Link as LinkIcon,
+  CaretLeft,
 } from "@phosphor-icons/react";
 
 /* --- GLASS-STYLE INFO ROW --- */
@@ -99,6 +102,13 @@ export default function GuestHubPage() {
 
   return (
     <main className="min-h-screen bg-transparent">
+      <div className="p-5">
+        {/* This now uses the Next.js Link component correctly */}
+        <Link href="/" className="group flex items-center gap-2 w-fit px-4 py-2 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md text-white/80 font-bold text-sm hover:bg-white/10 transition-all shadow-xl">
+          <CaretLeft size={18} weight="bold" className="group-hover:-translate-x-1 transition-transform" />
+          BACK TO HOME
+        </Link>
+      </div>
       <PageShell title="Guest Hub" subtitle="Read-Only Interface">
         <div className="space-y-5">
 

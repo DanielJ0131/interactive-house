@@ -18,7 +18,7 @@ SERVICE_ACCOUNT_PATH = os.getenv("SERVICE_ACCOUNT_PATH", "config/serviceAccountK
 # Make the path absolute if it's relative
 if not os.path.isabs(SERVICE_ACCOUNT_PATH):
     SERVICE_ACCOUNT_PATH = os.path.join(PROJECT_ROOT, SERVICE_ACCOUNT_PATH)
-    
+
 WATCH_DOC = os.getenv("WATCH_DOC")
 
 cred = credentials.Certificate(SERVICE_ACCOUNT_PATH)
@@ -40,9 +40,11 @@ last_fan_inb = None
 last_white_light = None
 last_orange_light = None
 
+
 def norm(v):
     if v is None: return None
     return str(v).strip().lower()
+
 
 def to_on_off(v):
     v = norm(v)
@@ -52,6 +54,7 @@ def to_on_off(v):
         return "off"
     return None
 
+
 def to_open_close(v):
     v = norm(v)
     if v in ("open", "opened", "1", "true", "yes", "on"):
@@ -59,6 +62,7 @@ def to_open_close(v):
     if v in ("close", "closed", "0", "false", "no", "off"):
         return "close"
     return None
+
 
 def extract_field_value(field):
     if not isinstance(field, dict):
@@ -71,14 +75,17 @@ def extract_field_value(field):
             return field.get(key)
     return None
 
+
 def to_int(v):
     try:
         return int(v)
     except (TypeError, ValueError):
         return None
 
+
 def get_state(data, key):
     return extract_field_value(data.get(key))
+
 
 def parse_state_line(line):
     """Parse STATE telemetry from Arduino: 'STATE door=open window=close ...'"""
@@ -92,6 +99,7 @@ def parse_state_line(line):
         key, value = token.split("=", 1)
         state[key.strip().lower()] = value.strip().lower()
     return state
+
 
 def sync_arduino_to_firestore(state):
     """Write Arduino physical state to Firestore (button presses, sensors)."""
@@ -181,6 +189,7 @@ def sync_arduino_to_firestore(state):
     except Exception as exc:
         print("Failed to sync Arduino state to Firebase:", exc)
 
+
 def arduino_listener():
     """Background thread: read STATE lines from Arduino and update Firestore."""
     while True:
@@ -198,6 +207,7 @@ def arduino_listener():
         if state:
             sync_arduino_to_firestore(state)
 
+
 def on_snapshot(doc_snapshot, changes, read_time):
     global last_fan, last_door, last_window, last_msg, last_buzzer, last_fan_ina, last_fan_inb, last_white_light, last_orange_light
 
@@ -205,20 +215,20 @@ def on_snapshot(doc_snapshot, changes, read_time):
         for doc in doc_snapshot:
             data = doc.to_dict() or {}
 
-            fan = to_on_off(data.get("fan"))     # "on"/"off" (legacy, may not be used)
+            fan = to_on_off(data.get("fan"))  # "on"/"off" (legacy, may not be used)
 
             raw_door = get_state(data, "door")
             raw_window = get_state(data, "window")
-            door = to_open_close(raw_door)        # "open"/"close"
-            window = to_open_close(raw_window)    # "open"/"close"
+            door = to_open_close(raw_door)  # "open"/"close"
+            window = to_open_close(raw_window)  # "open"/"close"
 
-            msg = data.get("ledTextDisplay")     # string
+            msg = data.get("ledTextDisplay")  # string
             buzzer = to_on_off(get_state(data, "buzzer"))
-            
+
             # Get fan INA and INB states separately
             fan_ina = to_on_off(get_state(data, "fan_INA"))
             fan_inb = to_on_off(get_state(data, "fan_INB"))
-            
+
             # Get light states from nested objects
             white_light = to_on_off(get_state(data, "white_light"))
             orange_light = to_on_off(get_state(data, "orange_light"))
@@ -309,9 +319,25 @@ def on_snapshot(doc_snapshot, changes, read_time):
                     last_msg = msg
                     print("LCD updated")
 
+
 watch = doc_ref.on_snapshot(on_snapshot)
 listener_thread = threading.Thread(target=arduino_listener, daemon=True)
 listener_thread.start()
+
+
+def send_song(note_list, duration_list):
+    # Zip notes and durations together
+    combined = []
+    for n, d in zip(note_list, duration_list):
+        combined.extend([str(n), str(d)])
+
+    # Prefix with 'S' so Arduino routes it to the second variable
+    payload = "S" + ",".join(combined) + "\n"
+
+    # Use your serial client (sc) to send it
+    sc.send_line(payload)
+    print(f"Sent song to separate variable: {payload[:50]}...")
+
 
 print("Watching:", WATCH_DOC, "(bidirectional sync active)")
 while True:

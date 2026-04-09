@@ -77,7 +77,7 @@ export default function LoginPage() {
           </h1>
 
           <p className="mt-2 text-center text-white/60">
-            Sign in to control your home
+            Sign in to control your house
           </p>
 
           <form onSubmit={onSubmit} className="mt-8 space-y-4">
@@ -92,7 +92,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 type="email"
                 placeholder="name@example.com"
-                className="mt-2 w-full rounded-2xl bg-[#070B18] border border-white/10 px-4 py-4 outline-none focus:border-[#0EA5E9]"
+                className="mt-2 w-full rounded-2xl bg-white !text-black placeholder:text-gray-500 border border-white/10 px-4 py-4 outline-none focus:border-[#0EA5E9]"
               />
             </div>
 
@@ -106,7 +106,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 type="password"
                 placeholder="••••••••"
-                className="mt-2 w-full rounded-2xl bg-[#070B18] border border-white/10 px-4 py-4 outline-none focus:border-[#0EA5E9]"
+                className="mt-2 w-full rounded-2xl bg-white !text-black placeholder:text-gray-500 border border-white/10 px-4 py-4 outline-none focus:border-[#0EA5E9]"
               />
             </div>
 

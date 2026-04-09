@@ -12,9 +12,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { onSnapshot, updateDoc } from 'firebase/firestore';
+import Slider from '@react-native-community/slider';
+import { onSnapshot, updateDoc, doc, getDoc, deleteField } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '../../utils/firebaseConfig';
 import { ARDUINO_DOC_ID, getArduinoDevicesDocRef } from '../../utils/firestorePaths';
+import { useAppTheme } from '../../utils/AppThemeContext';
+import { useGuest } from '../../utils/GuestContext';
+import { registerHubController } from '../../utils/hubController';
 
 type DeviceState = 'on' | 'off' | 'open' | 'closed';
 
@@ -28,6 +33,8 @@ type Telemetry = {
   steam?: number;
   motion?: number;
   gas?: number;
+  soil?: number;
+  light?: number;
 };
 
 type SyncData = {
@@ -41,10 +48,12 @@ type SyncData = {
 type DevicesDoc = {
   telemetry?: Telemetry;
   sync?: SyncData;
+  orange_light?: {
+    value?: number;
+  };
   fan_INA?: HardwareDevice;
   fan_INB?: HardwareDevice;
   white_light?: HardwareDevice;
-  orange_light?: HardwareDevice;
   door?: HardwareDevice;
   buzzer?: HardwareDevice;
   window?: HardwareDevice;
@@ -52,7 +61,6 @@ type DevicesDoc = {
 
 type DeviceKey =
   | 'white_light'
-  | 'orange_light'
   | 'fan_INA'
   | 'fan_INB'
   | 'door'
@@ -66,9 +74,7 @@ const DEVICE_CONFIG: Array<{
   interactive?: boolean;
 }> = [
   { key: 'white_light', label: 'White Light', icon: 'lightbulb-outline', interactive: true },
-  { key: 'orange_light', label: 'Orange Light', icon: 'lightbulb-on-outline', interactive: true },
-  { key: 'fan_INA', label: 'Fan INA', icon: 'fan', interactive: true },
-  { key: 'fan_INB', label: 'Fan INB', icon: 'fan-off', interactive: false },
+  { key: 'fan_INA', label: 'Fan', icon: 'fan', interactive: true },
   { key: 'door', label: 'Door', icon: 'door', interactive: true },
   { key: 'window', label: 'Window', icon: 'window-closed-variant', interactive: true },
   { key: 'buzzer', label: 'Buzzer', icon: 'bullhorn-outline', interactive: true },
@@ -78,10 +84,14 @@ const TELEMETRY_CONFIG: Array<{
   key: keyof Telemetry;
   label: string;
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+  threshold: number;
+  inclusive?: boolean;
 }> = [
-  { key: 'motion', label: 'Motion', icon: 'motion-sensor' },
-  { key: 'steam', label: 'Steam', icon: 'weather-fog' },
-  { key: 'gas', label: 'Gas', icon: 'molecule' },
+  { key: 'motion', label: 'Motion', icon: 'motion-sensor', threshold: 1, inclusive: true },
+  { key: 'steam', label: 'Steam', icon: 'weather-fog', threshold: 500 },
+  { key: 'gas', label: 'Gas', icon: 'molecule', threshold: 5 },
+  { key: 'soil', label: 'Soil', icon: 'sprout-outline', threshold: 50 },
+  { key: 'light', label: 'Light', icon: 'white-balance-sunny', threshold: 100 },
 ];
 
 const AnimatedFanIcon = memo(
@@ -166,13 +176,237 @@ const AnimatedFanIcon = memo(
   }
 );
 
+const AnimatedWalkingIcon = memo(
+  ({ active, color }: { active: boolean; color: string }) => {
+    const progress = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      progress.stopAnimation();
+
+      if (!active) {
+        progress.setValue(0);
+        return;
+      }
+
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(progress, {
+            toValue: 1,
+            duration: 420,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+          Animated.timing(progress, {
+            toValue: 0,
+            duration: 420,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+        ])
+      );
+
+      loop.start();
+
+      return () => {
+        loop.stop();
+      };
+    }, [active, progress]);
+
+    const translateX = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [-2, 2],
+    });
+
+    const rotate = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['-5deg', '5deg'],
+    });
+
+    return (
+      <Animated.View style={{ transform: [{ translateX }, { rotate }] }}>
+        <MaterialCommunityIcons name="walk" size={20} color={color} />
+      </Animated.View>
+    );
+  }
+);
+
+const AnimatedSteamIcon = memo(
+  ({ active, color }: { active: boolean; color: string }) => {
+    const progress = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      progress.stopAnimation();
+
+      if (!active) {
+        progress.setValue(0);
+        return;
+      }
+
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(progress, {
+            toValue: 1,
+            duration: 700,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+          Animated.timing(progress, {
+            toValue: 0,
+            duration: 700,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+        ])
+      );
+
+      loop.start();
+
+      return () => {
+        loop.stop();
+      };
+    }, [active, progress]);
+
+    const translateY = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [1.5, -1.5],
+    });
+
+    const opacity = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.75, 1],
+    });
+
+    return (
+      <Animated.View style={{ transform: [{ translateY }], opacity }}>
+        <MaterialCommunityIcons name="weather-fog" size={20} color={color} />
+      </Animated.View>
+    );
+  }
+);
+
+const AnimatedGasIcon = memo(
+  ({ active, color }: { active: boolean; color: string }) => {
+    const progress = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      progress.stopAnimation();
+
+      if (!active) {
+        progress.setValue(0);
+        return;
+      }
+
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(progress, {
+            toValue: 1,
+            duration: 460,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+          Animated.timing(progress, {
+            toValue: 0,
+            duration: 460,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+        ])
+      );
+
+      loop.start();
+
+      return () => {
+        loop.stop();
+      };
+    }, [active, progress]);
+
+    const scale = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.97, 1.03],
+    });
+
+    const rotate = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['-4deg', '4deg'],
+    });
+
+    return (
+      <Animated.View style={{ transform: [{ scale }, { rotate }] }}>
+        <MaterialCommunityIcons name="molecule" size={20} color={color} />
+      </Animated.View>
+    );
+  }
+);
+
+const MOCK_GUEST_DEVICES: DevicesDoc = {
+  white_light: { pin: 'D13', state: 'off', value: null },
+  fan_INA: { pin: 'D9', state: 'off', value: null },
+  fan_INB: { pin: 'D8', state: 'off', value: null },
+  door: { pin: 'D7', state: 'closed', value: null },
+  window: { pin: 'D6', state: 'closed', value: null },
+  buzzer: { pin: 'D5', state: 'off', value: null },
+  orange_light: { value: 0 },
+  telemetry: { steam: 0, motion: 0, gas: 0, soil: 0, light: 0 },
+  sync: {
+    lastSource: 'Guest Demo',
+    lastUpdatedAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
+  },
+};
+
 export default function DatabaseScreen() {
+  const { theme } = useAppTheme();
+  const { isGuest } = useGuest();
   const [deviceData, setDeviceData] = useState<DevicesDoc | null>(null);
+  const [guestDeviceData, setGuestDeviceData] = useState<DevicesDoc>(MOCK_GUEST_DEVICES);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isReversingFan, setIsReversingFan] = useState(false);
+  const [orangeLedPercent, setOrangeLedPercent] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
   const user = auth.currentUser;
 
+  const orangeLedRaw = Number(deviceData?.orange_light?.value ?? 0);
+
+  // Check user admin role
   useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        setIsAdmin(false);
+        return;
+      }
+
+      const userDocRefs = [
+        user.email ? doc(db, 'users', user.email) : null,
+        doc(db, 'users', user.uid),
+      ].filter(Boolean) as ReturnType<typeof doc>[];
+
+      (async () => {
+        try {
+          for (const userDocRef of userDocRefs) {
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists() && userDocSnap.data()?.role === 'admin') {
+              setIsAdmin(true);
+              return;
+            }
+          }
+          setIsAdmin(false);
+        } catch (error) {
+          console.error('Error resolving user role:', error);
+          setIsAdmin(false);
+        }
+      })();
+    });
+
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (isGuest) {
+      setDeviceData(guestDeviceData);
+      setLoading(false);
+      return;
+    }
+
     const docRef = getArduinoDevicesDocRef(db);
 
     const unsubscribeData = onSnapshot(
@@ -194,74 +428,246 @@ export default function DatabaseScreen() {
     );
 
     return () => unsubscribeData();
-  }, []);
+  }, [isGuest, guestDeviceData]);
+
+  useEffect(() => {
+    const clampedRaw = Math.max(0, Math.min(255, Number.isFinite(orangeLedRaw) ? orangeLedRaw : 0));
+    setOrangeLedPercent(Math.round((clampedRaw / 255) * 100));
+  }, [orangeLedRaw]);
+
 
   const toggleDevice = useCallback(
     async (deviceName: DeviceKey) => {
-      if (deviceName === 'fan_INB') return;
-
-      const currentDevice = deviceData?.[deviceName] as HardwareDevice | undefined;
+      const currentDevice = (isGuest ? guestDeviceData : deviceData)?.[deviceName] as HardwareDevice | undefined;
       if (!currentDevice) return;
 
       const currentState = currentDevice.state;
 
-      const newState =
-        currentState === 'on' || currentState === 'open'
-          ? deviceName === 'door' || deviceName === 'window'
-            ? 'closed'
-            : 'off'
-          : deviceName === 'door' || deviceName === 'window'
-            ? 'open'
-            : 'on';
-
       try {
+        if (isGuest) {
+          // Guest mode: update local state only
+          setGuestDeviceData((prev) => {
+            const updated = { ...prev };
+            if (deviceName === 'fan_INA') {
+              const isFanOn = prev.fan_INA?.state === 'on' || prev.fan_INB?.state === 'on';
+              if (!isFanOn) {
+                if (updated.fan_INA) updated.fan_INA.state = 'on';
+                if (updated.fan_INB) updated.fan_INB.state = 'off';
+              } else {
+                if (updated.fan_INA) updated.fan_INA.state = 'off';
+                if (updated.fan_INB) updated.fan_INB.state = 'off';
+              }
+            } else {
+              const device = updated[deviceName] as HardwareDevice | undefined;
+              if (device) {
+                device.state =
+                  currentState === 'on' || currentState === 'open'
+                    ? deviceName === 'door' || deviceName === 'window'
+                      ? 'closed'
+                      : 'off'
+                    : deviceName === 'door' || deviceName === 'window'
+                      ? 'open'
+                      : 'on';
+              }
+            }
+            return updated;
+          });
+          return;
+        }
+
         const docRef = getArduinoDevicesDocRef(db);
-        await updateDoc(docRef, {
-          [`${deviceName}.state`]: newState,
-        });
+        if (deviceName === 'fan_INA') {
+          // Fan card acts as a simple power toggle:
+          // any active fan state -> OFF, otherwise start in forward mode (INA).
+          const isFanOn = deviceData?.fan_INA?.state === 'on' || deviceData?.fan_INB?.state === 'on';
+          if (!isFanOn) {
+            await updateDoc(docRef, {
+              'fan_INA.state': 'on',
+              'fan_INB.state': 'off',
+            });
+          } else {
+            await updateDoc(docRef, {
+              'fan_INA.state': 'off',
+              'fan_INB.state': 'off',
+            });
+          }
+        } else {
+          const newState =
+            currentState === 'on' || currentState === 'open'
+              ? deviceName === 'door' || deviceName === 'window'
+                ? 'closed'
+                : 'off'
+              : deviceName === 'door' || deviceName === 'window'
+                ? 'open'
+                : 'on';
+
+          await updateDoc(docRef, {
+            [`${deviceName}.state`]: newState,
+          });
+        }
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Unknown error';
         Alert.alert('Toggle Error', message);
       }
     },
-    [deviceData]
+    [isGuest, deviceData, guestDeviceData]
   );
+
+  const reverseFan = useCallback(async () => {
+    if (isReversingFan) return;
+
+    setIsReversingFan(true);
+    try {
+      const currentData = isGuest ? guestDeviceData : deviceData;
+      const isCurrentlyReverse = currentData?.fan_INB?.state === 'on';
+
+      if (isGuest) {
+        // Guest mode: update local state only
+        setGuestDeviceData((prev) => {
+          const updated = { ...prev };
+          if (isCurrentlyReverse) {
+            if (updated.fan_INB) updated.fan_INB.state = 'off';
+            setTimeout(() => {
+              setGuestDeviceData((prev2) => {
+                const updated2 = { ...prev2 };
+                if (updated2.fan_INA) updated2.fan_INA.state = 'on';
+                return updated2;
+              });
+            }, 2000);
+          } else {
+            if (updated.fan_INA) updated.fan_INA.state = 'off';
+            setTimeout(() => {
+              setGuestDeviceData((prev2) => {
+                const updated2 = { ...prev2 };
+                if (updated2.fan_INB) updated2.fan_INB.state = 'on';
+                return updated2;
+              });
+            }, 2000);
+          }
+          return updated;
+        });
+        setIsReversingFan(false);
+        return;
+      }
+
+      const docRef = getArduinoDevicesDocRef(db);
+
+      if (isCurrentlyReverse) {
+        await updateDoc(docRef, {
+          'fan_INB.state': 'off',
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        await updateDoc(docRef, {
+          'fan_INA.state': 'on',
+        });
+      } else {
+        await updateDoc(docRef, {
+          'fan_INA.state': 'off',
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        await updateDoc(docRef, {
+          'fan_INB.state': 'on',
+        });
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      Alert.alert('Reverse Error', message);
+    } finally {
+      setIsReversingFan(false);
+    }
+  }, [isGuest, deviceData, guestDeviceData, isReversingFan]);
+
+  // for speech recognition
+useEffect(() => {
+  registerHubController({
+    toggleDevice: (id) => toggleDevice(id),
+    toggleDirection: () => reverseFan(),
+  });
+
+  return () => {
+    registerHubController({});
+  };
+}, [toggleDevice, reverseFan]);
+
+  const updateOrangeLed = useCallback(async (percent: number) => {
+    try {
+      const clampedPercent = Math.max(0, Math.min(100, percent));
+      const rawValue = Math.round((clampedPercent / 100) * 255);
+
+      if (isGuest) {
+        // Guest mode: update local state only
+        setGuestDeviceData((prev) => ({
+          ...prev,
+          orange_light: { value: rawValue },
+        }));
+        return;
+      }
+
+      const docRef = getArduinoDevicesDocRef(db);
+      await updateDoc(docRef, {
+        'orange_light.value': rawValue,
+        'orange_light.state': deleteField(),
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      Alert.alert('Orange Light Error', message);
+    }
+  }, [isGuest]);
 
   if (loading) {
     return (
-      <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: '#020617' }}>
+      <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: theme.colors.background }}>
         <View style={{ flex: 1, justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#0ea5e9" />
+          <ActivityIndicator size="large" color={theme.colors.accent} />
         </View>
       </SafeAreaView>
     );
   }
 
-  const lastUpdatedAt = formatTimestamp(deviceData?.sync?.lastUpdatedAt);
+  const displayData = isGuest ? guestDeviceData : deviceData;
+  const lastUpdatedAt = formatTimestamp(displayData?.sync?.lastUpdatedAt);
 
   return (
-    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: '#020617' }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <ScrollView contentContainerStyle={{ padding: 24 }} showsVerticalScrollIndicator={false}>
         <View className="mb-8 mt-4">
-          <Text className="text-white text-4xl font-extrabold tracking-tight">
-            {user?.displayName ? `${user.displayName}'s Home` : 'Database'}
+          <Text style={{ color: theme.colors.text }} className="text-4xl font-extrabold tracking-tight">
+            {isGuest ? 'Guest Home' : user?.displayName ? `${user.displayName}'s Home` : 'Database'}
           </Text>
-          <Text className="text-slate-500 text-lg font-medium">Live Hardware Control</Text>
+          <Text style={{ color: theme.colors.mutedText }} className="text-lg font-medium">
+            {isGuest ? 'Demo Hardware Control' : 'Live Hardware Control'}
+          </Text>
         </View>
 
         {error && (
-          <View className="bg-red-500/10 border border-red-500/30 p-4 rounded-3xl mb-6">
-            <Text className="text-red-400 font-medium">{error}</Text>
+          <View style={{ backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger }} className="border p-4 rounded-3xl mb-6">
+            <Text style={{ color: theme.colors.danger }} className="font-medium">{error}</Text>
           </View>
         )}
 
-        <Text className="text-sky-500 text-xs font-black uppercase tracking-[2px] mb-4 ml-2">
+        <Text style={{ color: theme.colors.accent }} className="text-xs font-black uppercase tracking-[2px] mb-4 ml-2">
           Actuators
         </Text>
 
-        {deviceData &&
+        {displayData &&
           DEVICE_CONFIG.map((device) => {
-            const data = deviceData[device.key];
+            const data =
+              device.key === 'fan_INA'
+                ? {
+                    pin: `${displayData.fan_INA?.pin ?? '-'} / ${displayData.fan_INB?.pin ?? '-'}`,
+                    state:
+                      displayData.fan_INA?.state === 'on'
+                        ? 'forward'
+                        : displayData.fan_INB?.state === 'on'
+                          ? 'reverse'
+                          : 'off',
+                    value: null,
+                  }
+                : displayData[device.key];
             if (!data) return null;
 
             return (
@@ -272,13 +678,22 @@ export default function DatabaseScreen() {
                 data={data}
                 disabled={!device.interactive}
                 onToggle={() => toggleDevice(device.key)}
+                onReverse={device.key === 'fan_INA' ? reverseFan : undefined}
+                reversing={device.key === 'fan_INA' ? isReversingFan : false}
+                reverseSpin={device.key === 'fan_INA' && data.state === 'reverse'}
               />
             );
           })}
 
-        {deviceData?.telemetry && (
+        <OrangeLedCard
+          percent={orangeLedPercent}
+          onChange={setOrangeLedPercent}
+          onSlidingComplete={updateOrangeLed}
+        />
+
+        {displayData?.telemetry && (
           <>
-            <Text className="text-purple-500 text-xs font-black uppercase tracking-[2px] mt-8 mb-4 ml-2">
+            <Text style={{ color: theme.colors.secondaryAccent }} className="text-xs font-black uppercase tracking-[2px] mt-8 mb-4 ml-2">
               Sensors
             </Text>
 
@@ -287,8 +702,12 @@ export default function DatabaseScreen() {
                 <TelemetryCard
                   key={sensor.key}
                   label={sensor.label}
+                  sensorKey={sensor.key}
                   icon={sensor.icon}
-                  value={deviceData.telemetry?.[sensor.key] ?? 0}
+                  value={displayData.telemetry?.[sensor.key] ?? 0}
+                  isActive={sensor.inclusive
+                    ? (displayData.telemetry?.[sensor.key] ?? 0) >= sensor.threshold
+                    : (displayData.telemetry?.[sensor.key] ?? 0) > sensor.threshold}
                   activeText="Detected"
                   inactiveText="Clear"
                 />
@@ -297,46 +716,104 @@ export default function DatabaseScreen() {
           </>
         )}
 
-        {deviceData?.sync && (
+        {!isGuest && displayData?.sync && (
           <>
-            <Text className="text-emerald-500 text-xs font-black uppercase tracking-[2px] mt-8 mb-4 ml-2">
+            <Text style={{ color: theme.colors.success }} className="text-xs font-black uppercase tracking-[2px] mt-8 mb-4 ml-2">
               Sync Status
             </Text>
 
-            <View className="bg-slate-900/40 border border-slate-800/60 p-5 rounded-3xl mb-4">
+            <View style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }} className="border p-5 rounded-3xl mb-4">
               <View className="flex-row items-center mb-4">
-                <View className="h-12 w-12 rounded-2xl bg-emerald-500/10 items-center justify-center mr-4">
-                  <MaterialCommunityIcons name="sync" size={24} color="#10b981" />
+                <View style={{ backgroundColor: theme.colors.successSoft }} className="h-12 w-12 rounded-2xl items-center justify-center mr-4">
+                  <MaterialCommunityIcons name="sync" size={24} color={theme.colors.success} />
                 </View>
                 <View>
-                  <Text className="text-white text-lg font-bold">Arduino Sync</Text>
-                  <Text className="text-slate-500 text-xs font-mono">{ARDUINO_DOC_ID}</Text>
+                  <Text style={{ color: theme.colors.text }} className="text-lg font-bold">Arduino Sync</Text>
+                  <Text style={{ color: theme.colors.mutedText }} className="text-xs font-mono">{isGuest ? 'Guest Demo' : ARDUINO_DOC_ID}</Text>
                 </View>
               </View>
 
-              <InfoRow label="Last Source" value={deviceData.sync.lastSource || 'Unknown'} />
+              <InfoRow label="Last Source" value={displayData.sync.lastSource || 'Unknown'} />
               <InfoRow label="Last Updated" value={lastUpdatedAt} />
             </View>
           </>
         )}
 
-        <Text className="text-slate-400 text-xs font-black uppercase tracking-[2px] mt-8 mb-4 ml-2">
-          Database Debug
-        </Text>
+        {!isGuest && isAdmin && (
+          <>
+            <Text style={{ color: theme.colors.subtleText }} className="text-xs font-black uppercase tracking-[2px] mt-8 mb-4 ml-2">
+              Database Debug
+            </Text>
 
-        <View className="bg-slate-900/40 border border-slate-800/60 p-5 rounded-3xl mb-8">
-          <Text
-            style={{
-              color: '#4ade80',
-              fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-              fontSize: 11,
-            }}
-          >
-            {JSON.stringify(deviceData, null, 2)}
-          </Text>
-        </View>
+            <View style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }} className="border p-5 rounded-3xl mb-8">
+              <Text
+                style={{
+                  color: theme.colors.success,
+                  fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+                  fontSize: 11,
+                }}
+              >
+                {JSON.stringify(displayData, null, 2)}
+              </Text>
+            </View>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function OrangeLedCard({
+  percent,
+  onChange,
+  onSlidingComplete,
+}: {
+  percent: number;
+  onChange: (value: number) => void;
+  onSlidingComplete: (value: number) => void;
+}) {
+  const { theme } = useAppTheme();
+  const levelLabel = `${Math.round(percent)}%`;
+
+  return (
+    <View
+      style={{
+        borderColor: percent === 100 ? theme.colors.accent : theme.colors.border,
+        backgroundColor: percent === 100 ? theme.colors.accentSoft : theme.colors.surface,
+      }}
+      className="border p-5 rounded-3xl mb-3"
+    >
+      <View className="flex-row justify-between items-center mb-4">
+        <View className="flex-row items-center flex-1">
+          <View style={{ backgroundColor: percent > 0 ? theme.colors.accentSoft : theme.colors.secondaryAccentSoft }} className="h-14 w-14 rounded-2xl items-center justify-center mr-4">
+            <MaterialCommunityIcons name="lightbulb-on-outline" size={26} color={percent > 0 ? theme.colors.accent : theme.colors.subtleText} />
+          </View>
+
+          <View className="flex-1">
+            <Text style={{ color: theme.colors.text }} className="text-lg font-bold">Orange Light</Text>
+            <Text style={{ color: theme.colors.mutedText }} className="text-xs font-medium mt-1">Brightness</Text>
+          </View>
+        </View>
+
+        <View style={{ backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accent }} className="px-3 py-2 rounded-2xl border">
+          <Text style={{ color: theme.colors.accent }} className="text-[10px] font-black uppercase tracking-widest">
+            {levelLabel}
+          </Text>
+        </View>
+      </View>
+
+      <Slider
+        value={percent}
+        minimumValue={0}
+        maximumValue={100}
+        step={1}
+        minimumTrackTintColor={theme.colors.accent}
+        maximumTrackTintColor={theme.colors.borderStrong}
+        thumbTintColor={theme.colors.accent}
+        onValueChange={onChange}
+        onSlidingComplete={onSlidingComplete}
+      />
+    </View>
   );
 }
 
@@ -348,65 +825,79 @@ function formatTimestamp(timestamp?: { seconds?: number; nanoseconds?: number })
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
+  const { theme } = useAppTheme();
   return (
     <View className="mb-3">
-      <Text className="text-slate-500 text-xs font-black uppercase tracking-widest">{label}</Text>
-      <Text className="text-white text-base font-semibold mt-1">{value}</Text>
+      <Text style={{ color: theme.colors.subtleText }} className="text-xs font-black uppercase tracking-widest">{label}</Text>
+      <Text style={{ color: theme.colors.text }} className="text-base font-semibold mt-1">{value}</Text>
     </View>
   );
 }
 
 function TelemetryCard({
+  sensorKey,
   label,
   icon,
   value,
+  isActive,
   activeText,
   inactiveText,
 }: {
+  sensorKey: keyof Telemetry;
   label: string;
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
   value: number;
+  isActive: boolean;
   activeText: string;
   inactiveText: string;
 }) {
-  const isActive = value > 2;
+  const { theme } = useAppTheme();
+  const iconColor = isActive ? theme.colors.danger : theme.colors.secondaryAccent;
 
   return (
     <View
-      style={{ flexBasis: '48%' }}
-      className={`p-5 rounded-3xl mb-4 border ${
-        isActive
-          ? 'bg-red-500/10 border-red-500/30'
-          : 'bg-slate-900/40 border-slate-800/60'
-      }`}
+      style={{
+        flexBasis: '48%',
+        backgroundColor: isActive ? theme.colors.dangerSoft : theme.colors.surface,
+        borderColor: isActive ? theme.colors.danger : theme.colors.border,
+      }}
+      className="p-5 rounded-3xl mb-4 border"
     >
       <View
-        className={`h-10 w-10 rounded-xl items-center justify-center mb-3 ${
-          isActive ? 'bg-red-500/10' : 'bg-purple-500/10'
-        }`}
+        style={{
+          backgroundColor: isActive ? theme.colors.dangerSoft : theme.colors.secondaryAccentSoft,
+          overflow: 'hidden',
+        }}
+        className="h-10 w-10 rounded-xl items-center justify-center mb-3"
       >
-        <MaterialCommunityIcons
-          name={icon}
-          size={20}
-          color={isActive ? '#f87171' : '#a855f7'}
-        />
+        {sensorKey === 'motion' && isActive ? (
+          <AnimatedWalkingIcon active={isActive} color={iconColor} />
+        ) : sensorKey === 'steam' && isActive ? (
+          <AnimatedSteamIcon active={isActive} color={iconColor} />
+        ) : sensorKey === 'gas' && isActive ? (
+          <AnimatedGasIcon active={isActive} color={iconColor} />
+        ) : (
+          <MaterialCommunityIcons
+            name={icon}
+            size={20}
+            color={iconColor}
+          />
+        )}
       </View>
 
-      <Text className="text-white font-bold" numberOfLines={1}>
+      <Text style={{ color: theme.colors.text }} className="font-bold" numberOfLines={1}>
         {label}
       </Text>
-      <Text className="text-slate-500 text-xs font-mono mt-1">Raw: {value}</Text>
+      <Text style={{ color: theme.colors.mutedText }} className="text-xs font-mono mt-1">Raw: {value}</Text>
 
       <View
-        className={`self-start mt-3 px-3 py-1.5 rounded-full border ${
-          isActive
-            ? 'bg-red-500/20 border-red-500/40'
-            : 'bg-slate-800 border-slate-700'
-        }`}
+        style={{
+          backgroundColor: isActive ? theme.colors.dangerSoft : theme.colors.chipBackground,
+          borderColor: isActive ? theme.colors.danger : theme.colors.border,
+        }}
+        className="self-start mt-3 px-3 py-1.5 rounded-full border"
       >
-        <Text className={`text-[10px] font-black uppercase tracking-widest ${
-          isActive ? 'text-red-300' : 'text-slate-400'
-        }`}>
+        <Text style={{ color: isActive ? theme.colors.danger : theme.colors.mutedText }} className="text-[10px] font-black uppercase tracking-widest">
           {isActive ? activeText : inactiveText}
         </Text>
       </View>
@@ -419,53 +910,64 @@ function DeviceCard({
   name,
   data,
   onToggle,
+  onReverse,
+  reversing = false,
+  reverseSpin = false,
   disabled = false,
 }: {
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
   name: string;
   data: HardwareDevice;
   onToggle: () => void;
+  onReverse?: () => void;
+  reversing?: boolean;
+  reverseSpin?: boolean;
   disabled?: boolean;
 }) {
-  const isActive = data.state === 'on' || data.state === 'open';
+  const { theme } = useAppTheme();
+  const isActive =
+    data.state === 'on' ||
+    data.state === 'open' ||
+    data.state === 'forward' ||
+    data.state === 'reverse';
   const isFan = name.toLowerCase().includes('fan');
+  const isDisabled = disabled || reversing;
 
   return (
     <Pressable
-      onPress={disabled ? undefined : onToggle}
+      onPress={isDisabled ? undefined : onToggle}
       style={{
-        borderColor: isActive ? 'rgba(14, 165, 233, 0.35)' : '#1e293b',
-        backgroundColor: isActive ? 'rgba(14, 165, 233, 0.05)' : 'rgba(15, 23, 42, 0.4)',
+        borderColor: isActive ? theme.colors.accent : theme.colors.border,
+        backgroundColor: isActive ? theme.colors.accentSoft : theme.colors.surface,
+        opacity: isDisabled ? 0.8 : 1,
       }}
       className="border p-5 rounded-3xl mb-3"
     >
       <View className="flex-row justify-between items-center">
         <View className="flex-row items-center flex-1">
           <View
-            className={`h-14 w-14 rounded-2xl items-center justify-center mr-4 ${
-              isActive ? 'bg-sky-500/10' : 'bg-slate-800/40'
-            }`}
+            style={{ backgroundColor: isActive ? theme.colors.accentSoft : theme.colors.secondaryAccentSoft }}
+            className="h-14 w-14 rounded-2xl items-center justify-center mr-4"
           >
             {isFan ? (
               <AnimatedFanIcon
                 speed={isActive ? 100 : 0}
-                direction={false}
-                color={isActive ? '#38bdf8' : '#475569'}
+                direction={reverseSpin}
+                color={isActive ? theme.colors.accent : theme.colors.subtleText}
               />
             ) : (
               <MaterialCommunityIcons
                 name={icon}
                 size={26}
-                color={isActive ? '#38bdf8' : '#475569'}
+                color={isActive ? theme.colors.accent : theme.colors.subtleText}
               />
             )}
           </View>
 
           <View className="flex-1">
-            <Text className="text-white text-lg font-bold">{name}</Text>
-            <Text className="text-slate-500 text-xs font-mono mt-1">Pin {data.pin}</Text>
+            <Text style={{ color: theme.colors.text }} className="text-lg font-bold">{name}</Text>
             {disabled && (
-              <Text className="text-amber-400 text-[10px] font-black uppercase tracking-widest mt-2">
+              <Text style={{ color: theme.colors.warning }} className="text-[10px] font-black uppercase tracking-widest mt-2">
                 Read Only
               </Text>
             )}
@@ -473,21 +975,34 @@ function DeviceCard({
         </View>
 
         <View
-          className={`px-3 py-2 rounded-2xl border ${
-            isActive
-              ? 'bg-sky-500/20 border-sky-500/50'
-              : 'bg-slate-800 border-slate-700'
-          }`}
+          style={{
+            backgroundColor: isActive ? theme.colors.accentSoft : theme.colors.chipBackground,
+            borderColor: isActive ? theme.colors.accent : theme.colors.border,
+          }}
+          className="px-3 py-2 rounded-2xl border"
         >
-          <Text
-            className={`text-[10px] font-black uppercase tracking-widest ${
-              isActive ? 'text-sky-300' : 'text-slate-400'
-            }`}
-          >
+          <Text style={{ color: isActive ? theme.colors.accentText : theme.colors.mutedText }} className="text-[10px] font-black uppercase tracking-widest">
             {data.state}
           </Text>
         </View>
       </View>
+
+      {onReverse && (
+        <View style={{ borderTopColor: theme.colors.border }} className="mt-4 pt-4 border-t">
+          <Pressable
+            onPress={reversing ? undefined : onReverse}
+            style={{
+              backgroundColor: reversing ? theme.colors.chipBackground : theme.colors.accentSoft,
+              borderColor: reversing ? theme.colors.border : theme.colors.accent,
+            }}
+            className="self-start px-4 py-2 rounded-xl border"
+          >
+            <Text style={{ color: reversing ? theme.colors.mutedText : theme.colors.accent }} className="text-[10px] font-black uppercase tracking-widest">
+              {reversing ? 'Reversing...' : 'Reverse'}
+            </Text>
+          </Pressable>
+        </View>
+      )}
     </Pressable>
   );
 }
