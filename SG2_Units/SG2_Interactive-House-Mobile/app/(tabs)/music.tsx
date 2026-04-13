@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { View, Text, Pressable, ScrollView, ActivityIndicator, TextInput, Alert, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { doc, getDoc, onSnapshot, setDoc, deleteDoc, type DocumentData } from 'firebase/firestore';
@@ -521,7 +521,7 @@ export default function MusicScreen() {
 
   const monospaceFont = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!selectedMelody) {
       setEditMelodyFrequencies('');
       setEditMelodyDelays('');
@@ -539,7 +539,7 @@ export default function MusicScreen() {
 
   const isSelectedMelodyPlaying = playingMelodyId === selectedMelody?.id && isPlaying;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const activeMelody = melodies.find((melody) => melody.state === 'on');
 
     if (activeMelody && activeMelody.id !== selectedMelody?.id) {
