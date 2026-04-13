@@ -28,7 +28,11 @@ jest.mock('../../../utils/AppThemeContext', () => ({
   useAppTheme: jest.fn(),
 }));
 
-jest.mock('react-native-markdown-display', () => () => null);
+jest.mock(
+  'react-native-markdown-display',
+  () => 'Markdown',
+  { virtual: true }
+);
 
 const theme = {
   colors: {
