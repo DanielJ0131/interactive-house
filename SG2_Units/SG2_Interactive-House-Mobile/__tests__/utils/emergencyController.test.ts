@@ -34,4 +34,11 @@ describe("emergencyController", () => {
 
     expect(startCall).toHaveBeenCalledTimes(1);
   });
+
+  it("returns same instance (singleton behavior)", () => {
+    const controller1 = getEmergencyController();
+    const controller2 = getEmergencyController();
+
+    expect(controller1).toBe(controller2);
+  });
 });
