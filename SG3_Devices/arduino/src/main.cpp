@@ -69,18 +69,31 @@ void loop() {
   // --- 2. GAS ALARM TEST ---
   // If gas (A0) is detected, beep the buzzer
   if (gas > gasThreshold) {
+
     digitalWrite(3, HIGH); // Beep ON
+    digitalWrite(5, HIGH);  // Yellow LED ON
+    digitalWrite(13, HIGH); // White LED ON
+
     lcd.clear();
     lcd.print("!! GAS ALERT !!");
+
     delay(100);
+
+    digitalWrite(5, HIGH);  // Yellow LED ON
+    digitalWrite(13, HIGH); // White LED ON
     digitalWrite(3, LOW);  // Beep OFF
+    delay(100);
   }
 
   // --- 3. BUTTON 1: LED & FAN TEST ---
   if (btn1 == LOW) { // Button 1 Pressed
+
     digitalWrite(7, HIGH); digitalWrite(6, LOW); // Fan ON
+
   } else {
+
     digitalWrite(7, LOW); digitalWrite(6, LOW); // Fan OFF
+
   }
 
   // --- 4. BUTTON 2: SERVO TEST ---
