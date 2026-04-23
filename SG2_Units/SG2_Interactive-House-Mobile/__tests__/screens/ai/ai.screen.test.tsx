@@ -72,11 +72,13 @@ describe('AI Screen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
     (useAppTheme as jest.Mock).mockReturnValue({
       theme,
       mode: 'default',
       setMode: jest.fn(),
     });
+
     (getGeminiModel as jest.Mock).mockReturnValue({
       startChat: jest.fn(() => ({
         sendMessage: mockSendMessage,
@@ -126,5 +128,271 @@ describe('AI Screen', () => {
         'fan_INA.state': 'on',
       });
     });
+  });
+
+  it('does not send a message when input is empty', async () => {
+    (useGuest as jest.Mock).mockReturnValue({
+      isGuest: false,
+    });
+
+    const { getByText } = render(<AiScreen />);
+
+    fireEvent.press(getByText('Send'));
+
+    await waitFor(() => {
+      expect(mockSendMessage).not.toHaveBeenCalled();
+      expect(updateDoc).not.toHaveBeenCalled();
+    });
+  });
+
+  it('handles chat command responses without writing to firestore', async () => {
+    (useGuest as jest.Mock).mockReturnValue({
+      isGuest: false,
+    });
+
+    mockSendMessage.mockResolvedValueOnce({
+      response: {
+        text: () =>
+          JSON.stringify({
+            type: 'chat',
+            reply: 'I can help control the door, window, lights, fan, and buzzer.',
+          }),
+      },
+    });
+
+    const { getByPlaceholderText, getByText, UNSAFE_getAllByType } = render(<AiScreen />);
+
+    fireEvent.changeText(
+      getByPlaceholderText('Command your home...'),
+      'What can you control?'
+    );
+    fireEvent.press(getByText('Send'));
+
+    await waitFor(() => {
+      expect(mockSendMessage).toHaveBeenCalledWith('What can you control?');
+    });
+
+    const markdownNodes = UNSAFE_getAllByType('Markdown');
+    expect(markdownNodes[0].props.children).toBe(
+      'I can help control the door, window, lights, fan, and buzzer.'
+    );
+
+    expect(updateDoc).not.toHaveBeenCalled();
+    expect(getArduinoDevicesDocRef).not.toHaveBeenCalled();
+  });
+
+  it('shows malformed JSON fallback message when AI response cannot be parsed', async () => {
+    (useGuest as jest.Mock).mockReturnValue({
+      isGuest: false,
+    });
+
+    mockSendMessage.mockResolvedValueOnce({
+      response: {
+        text: () => '{"type":"device_control","device":"fan_INA","state":"on"',
+      },
+    });
+
+    const { getByPlaceholderText, getByText, UNSAFE_getAllByType } = render(<AiScreen />);
+
+    fireEvent.changeText(
+      getByPlaceholderText('Command your home...'),
+      'Turn on the fan'
+    );
+    fireEvent.press(getByText('Send'));
+
+    await waitFor(() => {
+      expect(mockSendMessage).toHaveBeenCalledWith('Turn on the fan');
+    });
+
+    const markdownNodes = UNSAFE_getAllByType('Markdown');
+    expect(markdownNodes[0].props.children).toBe(
+      'I understood your message, but I could not format a valid command.'
+    );
+
+    expect(updateDoc).not.toHaveBeenCalled();
+    expect(getArduinoDevicesDocRef).not.toHaveBeenCalled();
+  });
+
+  it('extracts embedded JSON from surrounding text and executes the device command', async () => {
+    (useGuest as jest.Mock).mockReturnValue({
+      isGuest: false,
+    });
+
+    mockSendMessage.mockResolvedValueOnce({
+      response: {
+        text: () =>
+          'Sure, I can do that. {"type":"device_control","device":"door","state":"open","reply":"Opening the door."} Done.',
+      },
+    });
+
+    const { getByPlaceholderText, getByText } = render(<AiScreen />);
+
+    fireEvent.changeText(
+      getByPlaceholderText('Command your home...'),
+      'Open the door'
+    );
+    fireEvent.press(getByText('Send'));
+
+    await waitFor(() => {
+      expect(getArduinoDevicesDocRef).toHaveBeenCalled();
+      expect(updateDoc).toHaveBeenCalledWith('mock-arduino-doc-ref', {
+        'door.state': 'open',
+      });
+    });
+  });
+
+  it('rejects invalid device or state commands and shows fallback message', async () => {
+    (useGuest as jest.Mock).mockReturnValue({
+      isGuest: false,
+    });
+
+    mockSendMessage.mockResolvedValueOnce({
+      response: {
+        text: () =>
+          JSON.stringify({
+            type: 'device_control',
+            device: 'toaster',
+            state: 'on',
+            reply: 'Turning on the toaster.',
+          }),
+      },
+    });
+
+    const { getByPlaceholderText, getByText, UNSAFE_getAllByType } = render(<AiScreen />);
+
+    fireEvent.changeText(
+      getByPlaceholderText('Command your home...'),
+      'Turn on the toaster'
+    );
+    fireEvent.press(getByText('Send'));
+
+    await waitFor(() => {
+      expect(mockSendMessage).toHaveBeenCalledWith('Turn on the toaster');
+    });
+
+    const markdownNodes = UNSAFE_getAllByType('Markdown');
+    expect(markdownNodes[0].props.children).toBe(
+      'I understood your message, but I could not format a valid command.'
+    );
+
+    expect(updateDoc).not.toHaveBeenCalled();
+    expect(getArduinoDevicesDocRef).not.toHaveBeenCalled();
+  });
+
+  it('shows invalid command format message when AI says it has no access or cannot control', async () => {
+    (useGuest as jest.Mock).mockReturnValue({
+      isGuest: false,
+    });
+
+    mockSendMessage.mockResolvedValueOnce({
+      response: {
+        text: () => "I don't have access to control that device directly.",
+      },
+    });
+
+    const { getByPlaceholderText, getByText, UNSAFE_getAllByType } = render(<AiScreen />);
+
+    fireEvent.changeText(
+      getByPlaceholderText('Command your home...'),
+      'Open the door'
+    );
+    fireEvent.press(getByText('Send'));
+
+    await waitFor(() => {
+      expect(mockSendMessage).toHaveBeenCalledWith('Open the door');
+    });
+
+    const markdownNodes = UNSAFE_getAllByType('Markdown');
+    expect(markdownNodes[0].props.children).toBe(
+      'I understood the request, but the command format was invalid. Please try again.'
+    );
+
+    expect(updateDoc).not.toHaveBeenCalled();
+    expect(getArduinoDevicesDocRef).not.toHaveBeenCalled();
+  });
+
+  it('shows generic failure message when firestore updateDoc throws', async () => {
+    (useGuest as jest.Mock).mockReturnValue({
+      isGuest: false,
+    });
+
+    (updateDoc as jest.Mock).mockRejectedValueOnce(new Error('Firestore failed'));
+
+    mockSendMessage.mockResolvedValueOnce({
+      response: {
+        text: () =>
+          JSON.stringify({
+            type: 'device_control',
+            device: 'door',
+            state: 'open',
+            reply: 'Opening the door.',
+          }),
+      },
+    });
+
+    const { getByPlaceholderText, getByText, UNSAFE_getAllByType } = render(<AiScreen />);
+
+    fireEvent.changeText(
+      getByPlaceholderText('Command your home...'),
+      'Open the door'
+    );
+    fireEvent.press(getByText('Send'));
+
+    await waitFor(() => {
+      expect(updateDoc).toHaveBeenCalledWith('mock-arduino-doc-ref', {
+        'door.state': 'open',
+      });
+    });
+
+    const markdownNodes = UNSAFE_getAllByType('Markdown');
+    expect(markdownNodes[0].props.children).toBe(
+      "I couldn't complete that action. Please try again."
+    );
+  });
+
+  it('prevents duplicate sends while loading is already in progress', async () => {
+    (useGuest as jest.Mock).mockReturnValue({
+      isGuest: false,
+    });
+
+    let resolveMessage: ((value: any) => void) | undefined;
+
+    mockSendMessage.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveMessage = resolve;
+        })
+    );
+
+    const { getByPlaceholderText, getByText, queryByText, UNSAFE_getAllByType } = render(<AiScreen />);
+
+    fireEvent.changeText(
+      getByPlaceholderText('Command your home...'),
+      'Open the door'
+    );
+    fireEvent.press(getByText('Send'));
+    fireEvent.press(getByText('Send'));
+
+    await waitFor(() => {
+      expect(mockSendMessage).toHaveBeenCalledTimes(1);
+      expect(queryByText('House is thinking...')).toBeTruthy();
+    });
+
+    resolveMessage?.({
+      response: {
+        text: () =>
+          JSON.stringify({
+            type: 'chat',
+            reply: 'Done.',
+          }),
+      },
+    });
+
+    await waitFor(() => {
+      const markdownNodes = UNSAFE_getAllByType('Markdown');
+      expect(markdownNodes[0].props.children).toBe('Done.');
+    });
+
+    expect(mockSendMessage).toHaveBeenCalledTimes(1);
   });
 });
