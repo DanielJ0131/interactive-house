@@ -32,7 +32,29 @@ function VoiceTile() {
     );
 }
 
+function EmergencyTile() {
+    const router = useRouter();
 
+    return (
+        <button
+            onClick={() => router.push("/emergency?from=hub")}
+            className="w-full block group mb-8"
+        >
+            <div className="rounded-3xl bg-red-600/20 backdrop-blur-md border border-red-500/30 p-5 flex items-center justify-between hover:bg-red-600/30 transition-all border-l-4 border-l-red-500 shadow-xl">
+                <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-red-500/20 flex items-center justify-center text-red-400 group-hover:scale-110 transition-transform">
+                        <Icon path={mdiAlert} size={1.75} />
+                    </div>
+                    <div>
+                        <p className="text-lg font-semibold text-white">Emergency Call</p>
+                        <p className="text-white/40 text-[10px] tracking-[0.2em] uppercase font-bold">Call 112</p>
+                    </div>
+                </div>
+                <Icon path={mdiChevronRight} size={1.25} className="text-white/20 group-hover:text-white group-hover:translate-x-1 transition-all" />
+            </div>
+        </button>
+    );
+}
 
 function DeviceCard({
     icon,
@@ -255,6 +277,7 @@ export default function HubPage() {
 <PageShell title={`${username}'s Hub`} subtitle="Control Center">
 
                 <VoiceTile />
+                <EmergencyTile />
 
                 <h2 className="text-[10px] tracking-[0.4em] text-[#0EA5E9] font-black mt-4 mb-6 uppercase opacity-80">
                     Actuators
