@@ -2,7 +2,7 @@ jest.mock('../../../global.css', () => ({}));
 jest.mock('react-native-reanimated', () => ({}));
 
 jest.mock('expo-font', () => ({
-  useFonts: () => [true],
+  useFonts: jest.fn(() => [true]),
 }));
 
 jest.mock('expo-splash-screen', () => ({
@@ -91,6 +91,7 @@ jest.mock('expo-status-bar', () => ({
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import * as SplashScreen from 'expo-splash-screen';
+import * as ExpoFont from 'expo-font';
 import RootLayout from '../../../app/_layout';
 
 describe('RootLayout', () => {
@@ -115,5 +116,28 @@ describe('RootLayout', () => {
   it('hides splash screen after fonts are loaded', () => {
     render(<RootLayout />);
     expect(SplashScreen.hideAsync).toHaveBeenCalled();
+  });
+
+  it('returns null while fonts are not loaded', () => {
+    (ExpoFont.useFonts as jest.Mock).mockReturnValueOnce([false, undefined]);
+
+    const { toJSON } = render(<RootLayout />);
+
+    expect(toJSON()).toBeNull();
+    expect(SplashScreen.hideAsync).not.toHaveBeenCalled();
+  });
+
+  it('logs font loading error when useFonts returns an error', () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const fontError = new Error('Font loading failed');
+
+    (ExpoFont.useFonts as jest.Mock).mockReturnValueOnce([false, fontError]);
+
+    render(<RootLayout />);
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Font loading error:', fontError);
+    expect(SplashScreen.hideAsync).not.toHaveBeenCalled();
+
+    consoleErrorSpy.mockRestore();
   });
 });
