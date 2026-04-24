@@ -11,9 +11,9 @@ import { auth } from '../utils/firebaseConfig';
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { useGuest } from '../utils/GuestContext';
 
-const AUTH_TIMEOUT_MS = 15_000;
+export const AUTH_TIMEOUT_MS = 15_000;
 
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
     promise,
     new Promise<never>((_, reject) =>

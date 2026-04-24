@@ -1,11 +1,14 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { Alert } from 'react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import Slider from '@react-native-community/slider';
 import DatabaseScreen from '../../../app/(tabs)/hub';
 import { doc, getDoc, onSnapshot, updateDoc, deleteField } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../../../utils/firebaseConfig';
 import { getArduinoDevicesDocRef } from '../../../utils/firestorePaths';
+import { registerHubController } from '../../../utils/hubController';
+import { useGuest } from '../../../utils/GuestContext';
 
 jest.mock('firebase/firestore', () => ({
   doc: jest.fn(() => 'mock-user-doc-ref'),
@@ -33,6 +36,14 @@ jest.mock('../../../utils/firebaseConfig', () => ({
 jest.mock('../../../utils/firestorePaths', () => ({
   ARDUINO_DOC_ID: 'arduino_1',
   getArduinoDevicesDocRef: jest.fn(() => 'mock-doc-ref'),
+}));
+
+jest.mock('../../../utils/hubController', () => ({
+  registerHubController: jest.fn(),
+}));
+
+jest.mock('../../../utils/GuestContext', () => ({
+  useGuest: jest.fn(),
 }));
 
 const mockDeviceData = {
@@ -86,6 +97,10 @@ describe('Hub Screen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
+    (useGuest as jest.Mock).mockReturnValue({
+      isGuest: false,
+    });
+
     (onAuthStateChanged as jest.Mock).mockImplementation((_auth, callback: (user: any) => void) => {
       callback({ uid: 'uid-123', email: 'ali@example.com' });
       return jest.fn();
@@ -108,6 +123,10 @@ describe('Hub Screen', () => {
     );
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('renders live hardware control screen with device data', async () => {
     const { getByText } = render(<DatabaseScreen />);
 
@@ -126,6 +145,17 @@ describe('Hub Screen', () => {
     });
   }, 10000);
 
+  it('registers hub controller on mount', async () => {
+    render(<DatabaseScreen />);
+
+    await waitFor(() => {
+      expect(registerHubController).toHaveBeenCalledWith({
+        toggleDevice: expect.any(Function),
+        toggleDirection: expect.any(Function),
+      });
+    });
+  });
+
   it('toggles an interactive device and updates firestore', async () => {
     const { getByText } = render(<DatabaseScreen />);
 
@@ -139,6 +169,29 @@ describe('Hub Screen', () => {
     expect(updateDoc).toHaveBeenCalledWith('mock-doc-ref', {
       'white_light.state': 'off',
     });
+  });
+
+  it('toggles white light locally in guest mode without firestore writes', async () => {
+    (useGuest as jest.Mock).mockReturnValue({
+      isGuest: true,
+    });
+
+    const { getByText } = render(<DatabaseScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Guest Home')).toBeTruthy();
+      expect(getByText('Demo Hardware Control')).toBeTruthy();
+      expect(getByText('White Light')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('White Light'));
+
+    await waitFor(() => {
+      expect(getByText('on')).toBeTruthy();
+    });
+
+    expect(updateDoc).not.toHaveBeenCalled();
+    expect(getArduinoDevicesDocRef).not.toHaveBeenCalled();
   });
 
   it('toggles door state from closed to open', async () => {
@@ -168,6 +221,265 @@ describe('Hub Screen', () => {
       'fan_INA.state': 'on',
       'fan_INB.state': 'off',
     });
+  });
+
+  it('reverses fan locally in guest mode from forward to reverse', async () => {
+    jest.useFakeTimers();
+
+    (useGuest as jest.Mock).mockReturnValue({
+      isGuest: true,
+    });
+
+    const { getByText } = render(<DatabaseScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Guest Home')).toBeTruthy();
+      expect(getByText('Fan')).toBeTruthy();
+      expect(getByText('Reverse')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('Fan'));
+
+    await waitFor(() => {
+      expect(getByText('forward')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('Reverse'));
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    await waitFor(() => {
+      expect(getByText('reverse')).toBeTruthy();
+    });
+
+    expect(updateDoc).not.toHaveBeenCalled();
+    expect(getArduinoDevicesDocRef).not.toHaveBeenCalled();
+  });
+
+  it('shows reverse button for fan and reverses from forward to reverse', async () => {
+    jest.useFakeTimers();
+
+    (onSnapshot as jest.Mock).mockImplementation(
+      (_docRef, onNext: (snap: any) => void) => {
+        onNext({
+          exists: () => true,
+          data: () => ({
+            ...mockDeviceData,
+            fan_INA: {
+              ...mockDeviceData.fan_INA,
+              state: 'on',
+            },
+            fan_INB: {
+              ...mockDeviceData.fan_INB,
+              state: 'off',
+            },
+          }),
+        });
+
+        return jest.fn();
+      }
+    );
+
+    const { getByText } = render(<DatabaseScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Fan')).toBeTruthy();
+      expect(getByText('Reverse')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('Reverse'));
+
+    await waitFor(() => {
+      expect(updateDoc).toHaveBeenCalledWith('mock-doc-ref', {
+        'fan_INA.state': 'off',
+      });
+      expect(getByText('Reversing...')).toBeTruthy();
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    await waitFor(() => {
+      expect(updateDoc).toHaveBeenCalledWith('mock-doc-ref', {
+        'fan_INB.state': 'on',
+      });
+    });
+  });
+
+  it('reverses fan from reverse to forward', async () => {
+    jest.useFakeTimers();
+
+    (onSnapshot as jest.Mock).mockImplementation(
+      (_docRef, onNext: (snap: any) => void) => {
+        onNext({
+          exists: () => true,
+          data: () => ({
+            ...mockDeviceData,
+            fan_INA: {
+              ...mockDeviceData.fan_INA,
+              state: 'off',
+            },
+            fan_INB: {
+              ...mockDeviceData.fan_INB,
+              state: 'on',
+            },
+          }),
+        });
+
+        return jest.fn();
+      }
+    );
+
+    const { getByText } = render(<DatabaseScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Fan')).toBeTruthy();
+      expect(getByText('Reverse')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('Reverse'));
+
+    await waitFor(() => {
+      expect(updateDoc).toHaveBeenCalledWith('mock-doc-ref', {
+        'fan_INB.state': 'off',
+      });
+      expect(getByText('Reversing...')).toBeTruthy();
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    await waitFor(() => {
+      expect(updateDoc).toHaveBeenCalledWith('mock-doc-ref', {
+        'fan_INA.state': 'on',
+      });
+    });
+  });
+
+  it('disables reverse button while fan is reversing', async () => {
+    jest.useFakeTimers();
+
+    (onSnapshot as jest.Mock).mockImplementation(
+      (_docRef, onNext: (snap: any) => void) => {
+        onNext({
+          exists: () => true,
+          data: () => ({
+            ...mockDeviceData,
+            fan_INA: {
+              ...mockDeviceData.fan_INA,
+              state: 'on',
+            },
+            fan_INB: {
+              ...mockDeviceData.fan_INB,
+              state: 'off',
+            },
+          }),
+        });
+
+        return jest.fn();
+      }
+    );
+
+    const { getByText, queryByText } = render(<DatabaseScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Reverse')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('Reverse'));
+
+    await waitFor(() => {
+      expect(getByText('Reversing...')).toBeTruthy();
+      expect(queryByText('Reverse')).toBeNull();
+    });
+
+    fireEvent.press(getByText('Reversing...'));
+
+    expect(updateDoc).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    await waitFor(() => {
+      expect(updateDoc).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('shows reverse error alert when reverse operation fails', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+    (onSnapshot as jest.Mock).mockImplementation(
+      (_docRef, onNext: (snap: any) => void) => {
+        onNext({
+          exists: () => true,
+          data: () => ({
+            ...mockDeviceData,
+            fan_INA: {
+              ...mockDeviceData.fan_INA,
+              state: 'on',
+            },
+            fan_INB: {
+              ...mockDeviceData.fan_INB,
+              state: 'off',
+            },
+          }),
+        });
+
+        return jest.fn();
+      }
+    );
+
+    (updateDoc as jest.Mock).mockRejectedValueOnce(new Error('reverse failed'));
+
+    const { getByText } = render(<DatabaseScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Reverse')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('Reverse'));
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('Reverse Error', 'reverse failed');
+    });
+
+    alertSpy.mockRestore();
+  });
+
+  it('updates orange light locally in guest mode without firestore writes', async () => {
+    (useGuest as jest.Mock).mockReturnValue({
+      isGuest: true,
+    });
+
+    const { UNSAFE_getByType, getByText } = render(<DatabaseScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Guest Home')).toBeTruthy();
+      expect(getByText('Orange Light')).toBeTruthy();
+      expect(UNSAFE_getByType(Slider)).toBeTruthy();
+    });
+
+    const slider = UNSAFE_getByType(Slider);
+
+    fireEvent(slider, 'onValueChange', 75);
+
+    await waitFor(() => {
+      expect(getByText('75%')).toBeTruthy();
+    });
+
+    fireEvent(slider, 'onSlidingComplete', 75);
+
+    await waitFor(() => {
+      expect(getByText('75%')).toBeTruthy();
+    });
+
+    expect(updateDoc).not.toHaveBeenCalled();
+    expect(getArduinoDevicesDocRef).not.toHaveBeenCalled();
   });
 
   it('updates orange light value from slider percentage', async () => {
@@ -246,8 +558,6 @@ describe('Hub Screen', () => {
     });
   });
 
-  // ── Telemetry Sensors Display ────────────────────────────────────────────
-
   it('displays telemetry sensor values and labels', async () => {
     const { getByText } = render(<DatabaseScreen />);
 
@@ -267,7 +577,6 @@ describe('Hub Screen', () => {
       expect(getByText('Gas')).toBeTruthy();
     });
 
-    // Gas is 1 (<6), Motion is 0 (<1), Steam is 0 (not >500), Soil is 50 (not >50), Light is 100 (not >100)
     expect(queryByText('Detected')).toBeNull();
   });
 
@@ -294,16 +603,12 @@ describe('Hub Screen', () => {
     expect(getAllByText('Detected')).toHaveLength(5);
   });
 
-  // ── Sync Status Display ──────────────────────────────────────────────────
-
   it('displays sync status with formatted timestamp', async () => {
     const { getByText } = render(<DatabaseScreen />);
 
     await waitFor(() => {
       expect(getByText('Sync Status')).toBeTruthy();
     });
-
-    // Should show timestamp (mocked as 1700000000 seconds = Nov 15, 2023)
   });
 
   it('displays last source in sync status', async () => {
@@ -313,7 +618,7 @@ describe('Hub Screen', () => {
       expect(getByText('Sync Status')).toBeTruthy();
     });
 
-    // mockDeviceData has sync.lastSource = 'mobile-app'
+    expect(getByText('mobile-app')).toBeTruthy();
   });
 
   it('shows unavailable when timestamp is missing', async () => {
@@ -323,7 +628,7 @@ describe('Hub Screen', () => {
           exists: () => true,
           data: () => ({
             ...mockDeviceData,
-            sync: { lastSource: 'mobile-app' }, // Missing lastUpdatedAt
+            sync: { lastSource: 'mobile-app' },
           }),
         });
         return jest.fn();
@@ -337,8 +642,6 @@ describe('Hub Screen', () => {
     });
   });
 
-  // ── Orange Light Slider (Enhanced) ───────────────────────────────────────
-
   it('displays orange light slider with percentage label', async () => {
     const { UNSAFE_getByType, getByText } = render(<DatabaseScreen />);
 
@@ -346,12 +649,11 @@ describe('Hub Screen', () => {
       expect(UNSAFE_getByType(Slider)).toBeTruthy();
     });
 
-    // Should display percentage label (default 0%)
     expect(getByText('0%')).toBeTruthy();
   });
 
   it('updates orange light percentage label when slider changes', async () => {
-    const { UNSAFE_getByType } = render(<DatabaseScreen />);
+    const { UNSAFE_getByType, getByText } = render(<DatabaseScreen />);
 
     await waitFor(() => {
       expect(UNSAFE_getByType(Slider)).toBeTruthy();
@@ -360,7 +662,9 @@ describe('Hub Screen', () => {
     const slider = UNSAFE_getByType(Slider);
     fireEvent(slider, 'onValueChange', 75);
 
-    // Percentage should update to 75%
+    await waitFor(() => {
+      expect(getByText('75%')).toBeTruthy();
+    });
   });
 
   it('applies accent styling when orange light is at 100%', async () => {
@@ -370,7 +674,7 @@ describe('Hub Screen', () => {
           exists: () => true,
           data: () => ({
             ...mockDeviceData,
-            orange_light: { value: 255 }, // 100%
+            orange_light: { value: 255 },
           }),
         });
         return jest.fn();
@@ -391,7 +695,7 @@ describe('Hub Screen', () => {
           exists: () => true,
           data: () => ({
             ...mockDeviceData,
-            orange_light: { value: 300 }, // Over max
+            orange_light: { value: 300 },
           }),
         });
         return jest.fn();
@@ -401,35 +705,46 @@ describe('Hub Screen', () => {
     const { getByText } = render(<DatabaseScreen />);
 
     await waitFor(() => {
-      expect(getByText('100%')).toBeTruthy(); // Should clamp to 255 → 100%
+      expect(getByText('100%')).toBeTruthy();
     });
   });
 
-  // ── Guest Mode UI ────────────────────────────────────────────────────────
-
   it('renders guest mode with mock device data', async () => {
-    const GuestContext = require('../../../utils/GuestContext').GuestContext;
-    const GuestProvider = require('../../../utils/GuestContext').GuestProvider;
+    (useGuest as jest.Mock).mockReturnValue({
+      isGuest: true,
+    });
 
     const { getByText } = render(<DatabaseScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Guest Home')).toBeTruthy();
+      expect(getByText('Demo Hardware Control')).toBeTruthy();
+    });
+  });
+
+  it('shows loading state before data is received', async () => {
+    let triggerSnapshot: any;
+
+    (onSnapshot as jest.Mock).mockImplementation(
+      (_docRef, onNext: (snap: any) => void) => {
+        triggerSnapshot = onNext;
+        return jest.fn();
+      }
+    );
+
+    const { getByText, queryByText } = render(<DatabaseScreen />);
+
+    expect(queryByText('Live Hardware Control')).toBeNull();
+
+    triggerSnapshot({
+      exists: () => true,
+      data: () => mockDeviceData,
+    });
 
     await waitFor(() => {
       expect(getByText('Live Hardware Control')).toBeTruthy();
     });
   });
-
-  // ── Loading State ────────────────────────────────────────────────────────
-
-  it('displays loading spinner during initial data fetch', async () => {
-    (onSnapshot as jest.Mock).mockImplementation(() => jest.fn());
-
-    const { UNSAFE_queryByType } = render(<DatabaseScreen />);
-
-    // Before data arrives, should show loading
-    // (Note: waiting for implementation to finish before showing UI)
-  });
-
-  // ── Error States (Enhanced) ──────────────────────────────────────────────
 
   it('displays error with proper styling when fetch fails', async () => {
     (onSnapshot as jest.Mock).mockImplementation(
@@ -460,43 +775,8 @@ describe('Hub Screen', () => {
       expect(getByText('Failed to fetch device data.')).toBeTruthy();
     });
 
-    // Devices should not render when in error state
     expect(queryByText('White Light')).toBeNull();
   });
-
-  // ── Fan Reverse Button ───────────────────────────────────────────────────
-
-  it('displays fan reverse button as separate control', async () => {
-    const { getByText, queryByText } = render(<DatabaseScreen />);
-
-    await waitFor(() => {
-      expect(getByText('Fan')).toBeTruthy();
-    });
-
-    // Should have reverse button available
-  });
-
-  it('disables fan controls during reverse animation', async () => {
-    const { getByText } = render(<DatabaseScreen />);
-
-    await waitFor(() => {
-      expect(getByText('Fan')).toBeTruthy();
-    });
-
-    // During reversal, fan button should be disabled
-  });
-
-  it('shows animated spinner during fan reversal', async () => {
-    const { getByText } = render(<DatabaseScreen />);
-
-    await waitFor(() => {
-      expect(getByText('Fan')).toBeTruthy();
-    });
-
-    // Animated fan icon should be visible during reverse
-  });
-
-  // ── Admin Debug Section ──────────────────────────────────────────────────
 
   it('displays admin debug section with device raw data when admin', async () => {
     const { getByText } = render(<DatabaseScreen />);
@@ -504,8 +784,6 @@ describe('Hub Screen', () => {
     await waitFor(() => {
       expect(getByText('Database Debug')).toBeTruthy();
     });
-
-    // Admin should see raw debug output
   });
 
   it('shows device configuration in debug section', async () => {
@@ -514,8 +792,6 @@ describe('Hub Screen', () => {
     await waitFor(() => {
       expect(getByText('Database Debug')).toBeTruthy();
     });
-
-    // Should display device structure/pins
   });
 
   it('displays timestamp in debug section', async () => {
@@ -524,7 +800,5 @@ describe('Hub Screen', () => {
     await waitFor(() => {
       expect(getByText('Database Debug')).toBeTruthy();
     });
-
-    // Shows last sync timestamp for debugging
   });
 });

@@ -14,7 +14,8 @@ jest.doMock('@expo/vector-icons', () => ({
 jest.doMock('react-native-safe-area-context', () => {
   const React = require('react');
   return {
-    SafeAreaView: ({ children }: any) => React.createElement('SafeAreaView', null, children),
+    SafeAreaView: ({ children }: any) =>
+      React.createElement('SafeAreaView', null, children),
   };
 });
 
@@ -31,6 +32,7 @@ const originalConsoleError = console.error.bind(console);
 
 jest.spyOn(console, 'error').mockImplementation((...args: any[]) => {
   const message = args.map((value) => String(value ?? '')).join(' ');
+
   if (
     message.includes('not wrapped in act') ||
     message.includes('wrapped in act') ||
@@ -39,7 +41,8 @@ jest.spyOn(console, 'error').mockImplementation((...args: any[]) => {
     (message.includes('MusicScreen') && message.includes('act')) ||
     message === 'Error: boom' ||
     message === 'Error: Network failure' ||
-    message === 'Error: Firestore unavailable'
+    message === 'Error: Firestore unavailable' ||
+    message.includes('AI Control Error:')
   ) {
     return;
   }

@@ -48,9 +48,6 @@ export default function SpeechOverlay() {
     const words = lower.split(" ");
     const emergency = getEmergencyController();
 
-    //test
-    console.log("hub:", hub);
-
     // ---------------
     // Hub Commands
     // ---------------
