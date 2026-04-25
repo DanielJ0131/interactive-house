@@ -23,16 +23,16 @@ export default function TopHeader() {
         window.location.href = "/auth/login";
     };
 
-    return (
-        <header className="w-full border-b border-white/10 bg-[#000000]/50 backdrop-blur-sm">
-            <div className="mx-auto max-w-6xl flex items-center justify-between px-6 py-4">
+return (
+    <header className="w-full border-b border-white/10 bg-[#000000]/50 backdrop-blur-sm">
+        <div className="mx-auto max-w-6xl flex items-center justify-between px-6 py-4">
 
-                <div className="text-white font-bold text-lg tracking-wide">
-                    Interactive House
-                </div>
+            <div className="text-white font-bold text-lg tracking-wide">
+                Interactive House
+            </div>
 
+            <div className="flex items-center gap-8">
                 <nav className="flex items-center gap-6">
-
                     {nav.map((item) => {
                         const Icon = item.icon;
                         const active = pathname === item.href;
@@ -52,18 +52,21 @@ export default function TopHeader() {
                             </Link>
                         );
                     })}
+                </nav>
 
-                    {/*  Logout Button */}
+                <div className="flex items-center gap-3"> 
+                    {/* Top-right action area for actions, logout and emergency, to seperate nav from actions */} 
+                    
 
                     <button
                         onClick={handleLogout}
-                        className="ml-4 text-sm text-red-400 hover:text-red-300"
+                        className="text-sm text-red-400 hover:text-red-300"
                     >
                         Logout
                     </button>
-
-                </nav>
+                </div>
             </div>
-        </header>
-    );
+        </div>
+    </header>
+);
 }
