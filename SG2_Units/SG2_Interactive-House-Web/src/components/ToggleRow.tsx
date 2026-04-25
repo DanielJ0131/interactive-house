@@ -29,7 +29,7 @@ export default function ToggleRow({
 
             <button
                 onClick={() => onChange(!value)}
-                className={`h-9 w-16 rounded-full border transition ${value ? "bg-[#12B3FF] border-[#12B3FF]" : "bg-white/10 border-white/10"
+                className={`h-9 w-16 rounded-full border transition ${value ? "bg-[var(--color-accent)] border-[var(--color-accent)]" : "bg-[var(--color-accent-text)]"
                     }`}
                 aria-label={`toggle ${label}`}
             >

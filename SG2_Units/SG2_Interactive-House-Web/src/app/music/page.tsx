@@ -118,7 +118,7 @@ export default function MusicPage() {
                     </div>
                 </div>
 
-                <h2 className="text-[10px] tracking-[0.4em] text-[#0EA5E9] font-black mb-6 uppercase opacity-80 flex items-center gap-2">
+                <h2 className="text-[10px] tracking-[0.4em] text-[var(--color-accent)] font-black mb-6 uppercase opacity-80 flex items-center gap-2">
                     <MusicNotes size={16} weight="fill" />
                     Available Tracks
                 </h2>
@@ -129,14 +129,14 @@ export default function MusicPage() {
                         <div
                             key={song.id}
                             className={`group rounded-3xl backdrop-blur-md border transition-all duration-500 p-5 flex items-center justify-between shadow-xl ${activeSongId === song.id
-                                    ? "bg-white/15 border-[#0EA5E9]/50 border-l-4 border-l-[#0EA5E9]"
+                                    ? "bg-white/15 border-[var(--color-accent)] border-l-4 border-l-[var(--color-accent)]"
                                     : "bg-white/5 border-white/10 hover:bg-white/10"
                                 }`}
                         >
                             <div className="flex items-center gap-5">
                                 {/* ICON CONTAINER */}
                                 <div className={`h-14 w-14 rounded-2xl flex items-center justify-center transition-all duration-500 ${activeSongId === song.id
-                                        ? "bg-[#0EA5E9]/20 text-[#0EA5E9] scale-110"
+                                        ? "bg-[var(--color-accent-soft)] text-[var(--color-accent)] scale-110"
                                         : "bg-white/10 text-white/40 group-hover:text-white/70"
                                     }`}>
                                     <MusicNotes size={32} weight={activeSongId === song.id ? "fill" : "regular"} />
@@ -156,8 +156,8 @@ export default function MusicPage() {
                             <button
                                 onClick={() => activeSongId === song.id ? stopMusic() : playMusic(song.id, song.frequencies)}
                                 className={`flex items-center gap-2 px-8 py-3 rounded-full text-xs font-black tracking-widest transition-all active:scale-95 ${activeSongId === song.id
-                                        ? "bg-red-500 text-white shadow-lg shadow-red-500/20"
-                                        : "bg-[#0EA5E9] text-black shadow-lg shadow-[#0EA5E9]/20 hover:scale-105"
+                                            ? "bg-red-500 text-white shadow-lg shadow-red-500/20"
+                                            : "bg-[var(--color-accent)] text-black shadow-lg hover:scale-105"
                                     }`}
                             >
                                 {activeSongId === song.id ? (

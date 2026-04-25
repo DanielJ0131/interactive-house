@@ -43,8 +43,8 @@ return (
                                 href={item.href}
                                 className={`flex items-center gap-2 text-sm transition
                                 ${active
-                                        ? "text-[#0EA5E9]"
-                                        : "text-white/70 hover:text-[#0EA5E9]"
+                                        ? "text-[var(--color-accent)]"
+                                        : "text-white/70 hover:text-[var(--color-accent)]"
                                     }`}
                             >
                                 <Icon size={20} />

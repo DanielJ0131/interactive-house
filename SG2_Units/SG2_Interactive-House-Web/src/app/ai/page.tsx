@@ -245,7 +245,7 @@ ${trimmed}
               <div
                 key={msg.id}
                 className={`max-w-[85%] rounded-2xl p-4 text-sm shadow-lg ${msg.role === "user"
-                    ? "ml-auto bg-[#0EA5E9] text-black font-bold" // Active color matching Hub buttons
+                    ? "ml-auto ml-auto bg-[var(--color-accent)] text-black font-bold" // Active color matching Hub buttons
                     : "mr-auto bg-white/10 text-white border border-white/10 backdrop-blur-sm"
                   }`}
               >
@@ -263,8 +263,8 @@ ${trimmed}
           )}
 
           {loading && (
-            <div className="flex items-center gap-2 text-[#0EA5E9] text-[10px] font-black uppercase tracking-widest animate-pulse ml-2">
-              <div className="w-1.5 h-1.5 bg-[#0EA5E9] rounded-full" />
+            <div className="flex items-center gap-2 text-[var(--color-accent)] text-[10px] font-black uppercase tracking-widest animate-pulse ml-2">
+              <div className="w-1.5 h-1.5 bg-[var(--color-accent)] rounded-full" />
               AI is Thinking...
             </div>
           )}
@@ -290,7 +290,7 @@ ${trimmed}
           <button
             onClick={handleSend}
             disabled={loading || !message.trim()}
-            className="h-12 w-12 flex items-center justify-center rounded-full bg-[#0EA5E9] text-black hover:scale-105 active:scale-95 transition-all disabled:opacity-20 shadow-lg shadow-[#0EA5E9]/30"
+            className="h-12 w-12 flex items-center justify-center rounded-full bg-[var(--color-accent)] text-black hover:scale-105 active:scale-95 transition-all disabled:opacity-20 shadow-lg"
           >
             <PaperPlaneRight size={22} weight="fill" />
           </button>
