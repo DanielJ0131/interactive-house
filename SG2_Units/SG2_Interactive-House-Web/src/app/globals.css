@@ -3,12 +3,34 @@
 @tailwind utilities;
 
 :root {
-  --bg-color: #f52008; 
+  --bg-color: #020617;
   --text-primary: #f8fafc;
-  --glow-1: rgba(23, 143, 241, 0.45);
-  --glow-2: rgba(245, 3, 193, 0.35);
-  --glow-3: rgba(244, 240, 3, 0.25);
+
+  --color-background-alt: #0f172a;
+  --color-surface: #0f172a;
+  --color-surface-elevated: #111827;
+
+  --color-border: #1e293b;
+  --color-border-strong: #334155;
+
+  --color-muted-text: #94a3b8;
+  --color-subtle-text: #64748b;
+
+  --color-accent: #38bdf8;
+  --color-accent-soft: rgba(56, 189, 248, 0.14);
+  --color-accent-glow: rgba(56, 189, 248, 0.45);
+
+  --color-secondary-accent: #a855f7;
+  --color-secondary-accent-glow: rgba(168, 85, 247, 0.35);
+
+  --color-warning: #facc15;
+  --color-warning-glow: rgba(250, 204, 21, 0.25);
+
   --header-bg: #0f172a;
+
+  --glow-1: var(--color-accent-glow);
+  --glow-2: var(--color-secondary-accent-glow);
+  --glow-3: var(--color-warning-glow);
 }
 
 html, body {
@@ -77,8 +99,8 @@ input[type="range"]::-webkit-slider-thumb {
   height: 20px;
   width: 20px;
   border-radius: 50%;
-  background: #0EA5E9;
+  background: var(--color-accent);
   margin-top: -7px;
-  box-shadow: 0 0 15px rgba(14, 165, 233, 0.6);
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.6);
   cursor: pointer;
 }

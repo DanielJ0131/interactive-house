@@ -74,11 +74,11 @@ export default function SignupPage() {
     return (
         <main className="min-h-screen flex items-center justify-center px-6">
             <div className="w-full max-w-md">
-                <Link href="/auth/login" className="text-[#0EA5E9] hover:underline">
+                <Link href="/auth/login" className="text-[var(--color-accent)] hover:underline">
                     ← Back
                 </Link>
 
-                <div className="mt-6 rounded-3xl bg-[#0EA5E9]/20 border border-white/5 p-8 shadow-2xl">
+                <div className="mt-6 rounded-3xl bg-[#0EA5E9]/20 border border-white/5 p-8 shadow-2xl backdrop-blur-md">
                     <h1 className="text-3xl font-bold text-center">Create Account</h1>
                     <p className="mt-2 text-center text-white/60">
                         Register to manage your devices
@@ -92,7 +92,7 @@ export default function SignupPage() {
                                 onChange={(e) => setFullname(e.target.value)}
                                 type="text"
                                 placeholder="First and Last Name"
-                                className="mt-2 w-full rounded-2xl bg-slate-50 text-black border border-white/10 px-4 py-4 outline-none focus:border-[#0EA5E9] autofill:shadow-[inset_0_0_0px_1000px_#f8fafc]" />
+                                className="mt-2 w-full rounded-2xl bg-white text-black placeholder:text-gray-500 border border-white/10 px-4 py-4 outline-none focus:border-[var(--color-accent)]" />
                         </div>
 
                         <div>
@@ -102,7 +102,7 @@ export default function SignupPage() {
                                 onChange={(e) => setEmail(e.target.value)}
                                 type="email"
                                 placeholder="name@example.com"
-                                className="mt-2 w-full rounded-2xl bg-slate-50 text-black border border-white/10 px-4 py-4 outline-none focus:border-[#0EA5E9] autofill:shadow-[inset_0_0_0px_1000px_#f8fafc]" />
+                                className="mt-2 w-full rounded-2xl bg-white text-black placeholder:text-gray-500 border border-white/10 px-4 py-4 outline-none focus:border-[var(--color-accent)]" />
                         </div>
 
                         <div>
@@ -112,7 +112,7 @@ export default function SignupPage() {
                                 onChange={(e) => setPassword(e.target.value)}
                                 type="password"
                                 placeholder="••••••••"
-                                className="mt-2 w-full rounded-2xl bg-slate-50 text-black border border-white/10 px-4 py-4 outline-none focus:border-[#0EA5E9] autofill:shadow-[inset_0_0_0px_1000px_#f8fafc]" />
+                                className="mt-2 w-full rounded-2xl bg-white text-black placeholder:text-gray-500 border border-white/10 px-4 py-4 outline-none focus:border-[var(--color-accent)]" />
                         </div>
 
                         <div>
@@ -122,7 +122,7 @@ export default function SignupPage() {
                                 onChange={(e) => setConfirm(e.target.value)}
                                 type="password"
                                 placeholder="••••••••"
-                                className="mt-2 w-full rounded-2xl bg-slate-50 text-black border border-white/10 px-4 py-4 outline-none focus:border-[#0EA5E9] autofill:shadow-[inset_0_0_0px_1000px_#f8fafc]" />
+                                className="mt-2 w-full rounded-2xl bg-white text-black placeholder:text-gray-500 border border-white/10 px-4 py-4 outline-none focus:border-[var(--color-accent)]" />
                         </div>
 
                         {error ? (
@@ -134,14 +134,14 @@ export default function SignupPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full text-center rounded-2xl bg-[#0EA5E9] py-4 font-semibold text-lg text-[#071022] disabled:opacity-60"
+                            className="w-full text-center rounded-2xl bg-[var(--color-accent)] py-4 font-semibold text-lg text-[#071022] disabled:opacity-60"
                         >
                             {loading ? "Creating..." : "Sign Up"}
                         </button>
 
                         <p className="text-center text-white/60">
                             Already have an account?{" "}
-                            <Link href="/auth/login" className="text-[#0EA5E9] hover:underline">
+                            <Link href="/auth/login" className="text-[var(--color-accent)] hover:underline">
                                 Sign In
                             </Link>
                         </p>

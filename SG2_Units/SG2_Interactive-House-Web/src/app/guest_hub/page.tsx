@@ -63,7 +63,7 @@ function SliderInfoCard({
     <div className="rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 p-6">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-2xl bg-[#0EA5E9]/20 flex items-center justify-center text-[#0EA5E9]">
+          <div className="h-12 w-12 rounded-2xl bg-[var(--color-accent-soft)] flex items-center justify-center text-[var(--color-accent)]">
             {icon}
           </div>
 
@@ -73,14 +73,14 @@ function SliderInfoCard({
           </div>
         </div>
 
-        <div className="rounded-xl bg-white/10 border border-white/10 px-3 py-1 text-sm font-mono text-[#0EA5E9]">
+        <div className="rounded-xl bg-white/10 border border-white/10 px-3 py-1 text-sm font-mono text-[var(--color-accent)]">
           {value}%
         </div>
       </div>
 
       <div className="mt-6 h-2 w-full rounded-full bg-white/10 overflow-hidden">
         <div
-          className="h-full rounded-full bg-[#0EA5E9] shadow-[0_0_15px_rgba(14,165,233,0.5)]"
+          className="h-full rounded-full bg-[var(--color-accent)] shadow-lg"
           style={{ width: `${value}%` }}
         />
       </div>
@@ -112,7 +112,7 @@ export default function GuestHubPage() {
       <PageShell title="Guest Hub" subtitle="Read-Only Interface">
         <div className="space-y-5">
 
-          <h2 className="text-[10px] tracking-[0.4em] text-[#0EA5E9] font-bold mt-4 mb-6 uppercase">
+          <h2 className="text-[10px] tracking-[0.4em] text-[var(--color-accent)] font-bold mt-4 mb-6 uppercase">
             Actuators
           </h2>
 

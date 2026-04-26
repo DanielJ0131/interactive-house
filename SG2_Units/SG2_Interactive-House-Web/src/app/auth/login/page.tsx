@@ -70,7 +70,7 @@ export default function LoginPage() {
           ← Back
         </Link>
 
-        <div className="mt-6 rounded-3xl bg-[#0EA5E9]/20 border border-white/5 p-8 shadow-2xl">
+        <div className="mt-6 rounded-3xl bg-[#0EA5E9]/20 border border-white/5 p-8 shadow-2xl backdrop-blur-md">
 
           <h1 className="text-3xl font-bold text-center">
             Welcome Back
@@ -92,7 +92,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 type="email"
                 placeholder="name@example.com"
-                className="mt-2 w-full rounded-2xl bg-white !text-black placeholder:text-gray-500 border border-white/10 px-4 py-4 outline-none focus:border-[#0EA5E9]"
+                className="mt-2 w-full rounded-2xl bg-white text-black placeholder:text-gray-500 border border-white/10 px-4 py-4 outline-none focus:border-[#0EA5E9]"
               />
             </div>
 
@@ -106,7 +106,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 type="password"
                 placeholder="••••••••"
-                className="mt-2 w-full rounded-2xl bg-white !text-black placeholder:text-gray-500 border border-white/10 px-4 py-4 outline-none focus:border-[#0EA5E9]"
+                className="mt-2 w-full rounded-2xl bg-white text-black placeholder:text-gray-500 border border-white/10 px-4 py-4 outline-none focus:border-[#0EA5E9]"
               />
             </div>
 

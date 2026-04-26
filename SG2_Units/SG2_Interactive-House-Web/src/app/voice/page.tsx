@@ -15,8 +15,9 @@ export default function VoicePage() {
 
                     {/* Visual Icon */}
                     <div className="h-32 w-32 rounded-full bg-white/5 border border-white/10 flex items-center justify-center relative">
-                        <div className="absolute inset-0 rounded-full bg-[#0EA5E9]/5 animate-pulse" />
-                        <Microphone size={54} weight="thin" className="text-[#0EA5E9]" />
+                        <div className="absolute inset-0 rounded-full bg-[var(--color-accent-soft)] animate-pulse" />
+                        <Microphone size={54} weight="thin" className="text-[var(--color-accent)]
+" />
                     </div>
 
                     {/* Content */}
@@ -36,7 +37,7 @@ export default function VoicePage() {
                     {/* Navigation Back */}
                     <Link
                         href="/hub"
-                        className="mt-8 flex items-center gap-2 text-white/30 hover:text-[#0EA5E9] transition-colors text-xs font-bold uppercase tracking-widest"
+                        className="mt-8 flex items-center gap-2 text-white/30 hover:text-[var(--color-accent)] transition-colors text-xs font-bold uppercase tracking-widest"
                     >
                         <CaretLeft size={16} />
                         Return to Hub
