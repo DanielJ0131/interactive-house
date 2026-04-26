@@ -10,11 +10,11 @@ export function PageShell({
     children: React.ReactNode;
 }) {
     return (
-        <div className="min-h-screen bg-#f52008 text-white">
-                {/* background glow */}
+        <div className="min-h-screen bg-[var(--bg-color)] text-white">
+            {/* background glow */}
             <div className="pointer-events-none fixed inset-0 opacity-60">
-                <div className="absolute -top-40 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-[#0EA5E9]/10 blur-3xl" />
-                <div className="absolute top-40 -left-40 h-[520px] w-[520px] rounded-full bg-[#7C3AED]/10 blur-3xl" />
+                <div className="absolute -top-40 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-[var(--color-accent-soft)] blur-3xl" />
+                <div className="absolute top-40 -left-40 h-[520px] w-[520px] rounded-full bg-[var(--color-secondary-accent-soft)] blur-3xl" />
             </div>
 
             <header className="px-6 pt-8 pb-4">
@@ -30,7 +30,6 @@ export function PageShell({
             <main className="px-6 pb-10">
                 <div className="mx-auto max-w-4xl">{children}</div>
             </main>
-
         </div>
     );
 }

@@ -16,9 +16,9 @@ import { mdiLightbulb, mdiDoor, mdiWeatherWindy, mdiFan, mdiRun, mdiCloud, mdiAl
 function VoiceTile() {
     return (
         <Link href="/voice" className="block group mb-8">
-            <div className="rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 p-5 flex items-center justify-between hover:bg-white/10 transition-all border-l-4 border-l-[#0EA5E9] shadow-xl">
+            <div className="rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 p-5 flex items-center justify-between hover:bg-white/10 transition-all border-l-4 border-l-[var(--color-accent)] shadow-xl">
                 <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-[#0EA5E9]/20 flex items-center justify-center text-[#0EA5E9] group-hover:scale-110 transition-transform">
+                    <div className="h-12 w-12 rounded-2xl bg-[var(--color-accent-soft)] flex items-center justify-center text-[var(--color-accent)] group-hover:scale-110 transition-transform">
                         <Icon path={mdiMicrophone} size={1.75} />
                     </div>
                     <div>
@@ -32,7 +32,29 @@ function VoiceTile() {
     );
 }
 
+function EmergencyTile() {
+    const router = useRouter();
 
+    return (
+        <button
+            onClick={() => router.push("/emergency?from=hub")}
+            className="w-full block group mb-8"
+        >
+            <div className="rounded-3xl bg-red-600/20 backdrop-blur-md border border-red-500/30 p-5 flex items-center justify-between hover:bg-red-600/30 transition-all border-l-4 border-l-red-500 shadow-xl">
+                <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-red-500/20 flex items-center justify-center text-red-400 group-hover:scale-110 transition-transform">
+                        <Icon path={mdiAlert} size={1.75} />
+                    </div>
+                    <div>
+                        <p className="text-lg font-semibold text-white">Emergency Call</p>
+                        <p className="text-white/40 text-[10px] tracking-[0.2em] uppercase font-bold">Call 112</p>
+                    </div>
+                </div>
+                <Icon path={mdiChevronRight} size={1.25} className="text-white/20 group-hover:text-white group-hover:translate-x-1 transition-all" />
+            </div>
+        </button>
+    );
+}
 
 function DeviceCard({
     icon,
@@ -65,9 +87,9 @@ function DeviceCard({
                 onClick={onToggle}
                 disabled={loading}
                 className={`px-6 py-2 rounded-full text-xs font-black tracking-widest transition-all ${isActive
-                        ? "bg-[#0EA5E9] text-black shadow-lg shadow-[#0EA5E9]/30 scale-105"
-                        : "bg-white/10 text-white/40 hover:bg-white/20"
-                    } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+                    ? "bg-[var(--color-accent)] text-black shadow-lg scale-105"
+                    : "bg-white/10 text-white/40 hover:bg-white/20"
+                } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
             >
                 {loading ? "..." : state}
             </button>
@@ -100,7 +122,7 @@ function SliderCard({
                         <p className="text-white/40 text-sm font-mono">PIN {pin}</p>
                     </div>
                 </div>
-                <span className="text-[#0EA5E9] font-mono font-bold bg-[#0EA5E9]/10 px-3 py-1 rounded-lg text-xs">
+                <span className="text-[var(--color-accent)] font-mono font-bold bg-[var(--color-accent-soft)] px-3 py-1 rounded-lg text-xs">
                     {Math.round((value / 255) * 100)}%
                 </span>
             </div>
@@ -110,7 +132,7 @@ function SliderCard({
                 max="255"
                 value={value}
                 onChange={(e) => onChange(parseInt(e.target.value))}
-                className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#0EA5E9]"
+                className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-[var(--color-accent)]"
             />
         </div>
     );
@@ -255,8 +277,9 @@ export default function HubPage() {
 <PageShell title={`${username}'s Hub`} subtitle="Control Center">
 
                 <VoiceTile />
+                <EmergencyTile />
 
-                <h2 className="text-[10px] tracking-[0.4em] text-[#0EA5E9] font-black mt-4 mb-6 uppercase opacity-80">
+                <h2 className="text-[10px] tracking-[0.4em] text-[var(--color-accent)] font-black mt-4 mb-6 uppercase opacity-80">
                     Actuators
                 </h2>
 
